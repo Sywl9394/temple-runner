@@ -143,6 +143,61 @@
             color: #fff;
             animation: pulse 1.5s ease-in-out infinite;
         }
+        #startScreen .controls-hint {
+            margin-top: 20px;
+            padding: 20px 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(255,215,0,0.3);
+        }
+        #startScreen .controls-hint .hint-title {
+            font-size: clamp(14px, 3vw, 20px);
+            color: #FFD700;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        #startScreen .controls-hint .key-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 8px 0;
+        }
+        #startScreen .controls-hint .key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 45px;
+            height: 45px;
+            padding: 0 12px;
+            background: linear-gradient(180deg, #444 0%, #222 100%);
+            border: 2px solid #666;
+            border-radius: 8px;
+            color: #fff;
+            font-size: clamp(12px, 2.5vw, 16px);
+            font-weight: bold;
+            box-shadow: 0 3px 0 #111, 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #startScreen .controls-hint .key-label {
+            color: #aaa;
+            font-size: clamp(11px, 2vw, 14px);
+        }
+        @media (hover: hover) and (pointer: fine) {
+            #startScreen .controls-hint {
+                display: block;
+            }
+            #startScreen .mobile-hint {
+                display: none;
+            }
+        }
+        @media (hover: none), (pointer: coarse) {
+            #startScreen .controls-hint {
+                display: none;
+            }
+            #startScreen .mobile-hint {
+                display: block;
+            }
+        }
         #gameOverScreen h2 {
             font-size: clamp(26px, 8vw, 56px);
             color: #ff4444;
@@ -353,6 +408,25 @@
             <h1>🏛️ 神庙逃亡</h1>
             <div class="subtitle">Temple Runner</div>
             <div class="start-hint">点击屏幕 或 按 空格键 开始</div>
+            <div class="controls-hint">
+                <div class="hint-title">⌨️ 按键说明</div>
+                <div class="key-row">
+                    <span class="key">←</span>
+                    <span class="key">→</span>
+                    <span class="key-label">左右移动 / A D 键</span>
+                </div>
+                <div class="key-row">
+                    <span class="key">空格</span>
+                    <span class="key-label">开始 / 跳跃</span>
+                </div>
+                <div class="key-row">
+                    <span class="key">ESC</span>
+                    <span class="key-label">暂停游戏</span>
+                </div>
+            </div>
+            <div class="mobile-hint" style="display:none; margin-top:15px; color:#888; font-size:14px;">
+                📱 手机端：滑动屏幕左右移动，点击按钮操作
+            </div>
         </div>
         
         <div id="gameOverScreen" class="hidden" onclick="startGame()">
