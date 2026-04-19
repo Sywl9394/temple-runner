@@ -833,7 +833,7 @@
         }
 
         function drawPlayer() {
-            // 玩家始终在屏幕中心，地铁跑酷风格角色 - 精美版
+            // 玩家始终在屏幕中心 - 3D立体增强版
             const x = width / 2;
             const baseY = height * CONFIG.playerY;
             const y = baseY - game.jumpHeight;
@@ -844,7 +844,7 @@
                 ctx.globalAlpha = 0.3;
             }
 
-            // 跑步节奏（跑动时腿部左右摆动，频率和幅度随速度提升）
+            // 跑步节奏
             const speedRatio = game.speed / CONFIG.maxSpeed;
             const runFreq = 0.35 + speedRatio * 0.35;
             const runCycle = Math.sin(game.frameCount * runFreq) * (14 + speedRatio * 6);
@@ -854,121 +854,227 @@
             let pantsColor = '#1a1a2e';
             let skinColor = '#F4A460';
             let jacketHighlight = '#5dd3f3';
+            let jacketShadow = '#007799';
+            let outlineColor = '#006688';
             if (game.isInvincible) {
                 const glow = Math.sin(game.frameCount * 0.4) * 0.4 + 0.6;
                 jacketColor = `rgba(0, 255, 136, ${glow})`;
                 jacketHighlight = `rgba(150, 255, 200, ${glow})`;
+                jacketShadow = `rgba(0, 180, 100, ${glow})`;
                 skinColor = `rgba(0, 255, 136, ${glow})`;
+                outlineColor = '#00aa66';
             } else if (game.isHurt) {
                 jacketColor = '#ff4444';
                 jacketHighlight = '#ff8888';
+                jacketShadow = '#cc2222';
+                outlineColor = '#aa0000';
             }
 
-            // 阴影 - 精美渐变阴影
-            const shadowGrad = ctx.createRadialGradient(x, baseY + 8, 0, x, baseY + 8, size * 1.1);
-            shadowGrad.addColorStop(0, 'rgba(0,0,0,0.4)');
-            shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+            // === 地面阴影 - 3D投影 ===
+            const shadowGrad = ctx.createRadialGradient(x, baseY + 10, 0, x, baseY + 10, size * 1.3);
+            shadowGrad.addColorStop(0, 'rgba(0,0,0,0.5)');
+            shadowGrad.addColorStop(0.4, 'rgba(0,0,0,0.25)');
             shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = shadowGrad;
             ctx.beginPath();
-            ctx.ellipse(x, baseY + 8, size * 1.0, size * 0.25, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, baseY + 10, size * 1.2, size * 0.3, 0, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.save();
 
-            // === 背包（在身体后方）- 精美渐变 ===
-            const bagGrad = ctx.createLinearGradient(x + size * 0.15, y - size * 0.85, x + size * 0.6, y - size * 0.15);
-            bagGrad.addColorStop(0, '#f39c12');
-            bagGrad.addColorStop(0.5, '#e67e22');
+            // === 背包 - 3D立体效果 ===
+            // 背包背面阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.18, y - size * 0.82, size * 0.42, size * 0.65, 6);
+            ctx.fill();
+            // 背包主体
+            const bagGrad = ctx.createLinearGradient(x + size * 0.15, y - size * 0.88, x + size * 0.6, y - size * 0.1);
+            bagGrad.addColorStop(0, '#f8c471');
+            bagGrad.addColorStop(0.3, '#f39c12');
+            bagGrad.addColorStop(0.7, '#e67e22');
             bagGrad.addColorStop(1, '#d35400');
             ctx.fillStyle = bagGrad;
             ctx.beginPath();
             ctx.roundRect(x + size * 0.15, y - size * 0.85, size * 0.45, size * 0.7, 6);
             ctx.fill();
-            // 背包高光
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            // 背包顶部高光
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.beginPath();
-            ctx.roundRect(x + size * 0.18, y - size * 0.82, size * 0.15, size * 0.4, 3);
+            ctx.roundRect(x + size * 0.17, y - size * 0.83, size * 0.2, size * 0.35, 4);
             ctx.fill();
-            // 背包拉链
-            ctx.strokeStyle = '#c0392b';
-            ctx.lineWidth = 2;
+            // 背包边缘描边
+            ctx.strokeStyle = '#a04000';
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(x + size * 0.37, y - size * 0.75);
-            ctx.lineTo(x + size * 0.37, y - size * 0.25);
+            ctx.roundRect(x + size * 0.15, y - size * 0.85, size * 0.45, size * 0.7, 6);
             ctx.stroke();
-            // 背包装饰条
-            ctx.fillStyle = '#c0392b';
-            ctx.fillRect(x + size * 0.2, y - size * 0.55, size * 0.35, size * 0.05);
+            // 背带
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.25, y - size * 0.85);
+            ctx.lineTo(x + size * 0.25, y - size * 0.95);
+            ctx.moveTo(x + size * 0.5, y - size * 0.85);
+            ctx.lineTo(x + size * 0.5, y - size * 0.95);
+            ctx.stroke();
 
-            // === 腿部 - 渐变效果 ===
-            // 裤子渐变
-            const pantsGrad = ctx.createLinearGradient(x - 12, y - size * 0.2, x + 12, y + size * 0.15);
-            pantsGrad.addColorStop(0, '#2a2a4e');
-            pantsGrad.addColorStop(0.5, pantsColor);
-            pantsGrad.addColorStop(1, '#0a0a1e');
-            ctx.strokeStyle = pantsGrad;
-            ctx.lineWidth = 10;
+            // === 腿部 - 3D圆柱效果 ===
+            // 左腿阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 12;
             ctx.lineCap = 'round';
-            // 左腿
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.moveTo(x - 8 + runCycle * 0.6, y - size * 0.1);
+            ctx.lineTo(x - 8 + runCycle * 0.6, y + size * 0.08);
+            ctx.stroke();
+            // 左腿主体
+            const legGrad = ctx.createLinearGradient(x - 14, y - size * 0.15, x + 2, y + size * 0.1);
+            legGrad.addColorStop(0, '#3a3a5e');
+            legGrad.addColorStop(0.3, pantsColor);
+            legGrad.addColorStop(0.7, '#252540');
+            legGrad.addColorStop(1, '#0a0a1e');
+            ctx.strokeStyle = legGrad;
+            ctx.lineWidth = 11;
             ctx.beginPath();
             ctx.moveTo(x - 8, y - size * 0.15);
             ctx.lineTo(x - 8 + runCycle * 0.6, y + size * 0.1);
             ctx.stroke();
-            // 右腿
+            // 左腿高光线
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x - 10, y - size * 0.12);
+            ctx.lineTo(x - 10 + runCycle * 0.6, y + size * 0.08);
+            ctx.stroke();
+
+            // 右腿阴影
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.moveTo(x + 8 - runCycle * 0.6, y - size * 0.1);
+            ctx.lineTo(x + 8 - runCycle * 0.6, y + size * 0.08);
+            ctx.stroke();
+            // 右腿主体
+            ctx.strokeStyle = legGrad;
+            ctx.lineWidth = 11;
             ctx.beginPath();
             ctx.moveTo(x + 8, y - size * 0.15);
             ctx.lineTo(x + 8 - runCycle * 0.6, y + size * 0.1);
             ctx.stroke();
+            // 右腿高光线
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y - size * 0.12);
+            ctx.lineTo(x + 6 - runCycle * 0.6, y + size * 0.08);
+            ctx.stroke();
 
-            // 鞋子 - 精美渐变
-            const shoeGrad = ctx.createLinearGradient(0, y + size * 0.05, 0, y + size * 0.18);
-            shoeGrad.addColorStop(0, '#ff6b6b');
-            shoeGrad.addColorStop(0.5, '#e74c3c');
+            // === 鞋子 - 3D立体 ===
+            // 左鞋阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x - 8 + runCycle * 0.6, y + size * 0.14, 12, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 左鞋主体
+            const shoeGrad = ctx.createLinearGradient(0, y + size * 0.06, 0, y + size * 0.18);
+            shoeGrad.addColorStop(0, '#ff8080');
+            shoeGrad.addColorStop(0.3, '#ff6b6b');
+            shoeGrad.addColorStop(0.7, '#e74c3c');
             shoeGrad.addColorStop(1, '#c0392b');
-            // 左鞋
             ctx.fillStyle = shoeGrad;
             ctx.beginPath();
-            ctx.ellipse(x - 8 + runCycle * 0.6, y + size * 0.12, 10, 6, 0, 0, Math.PI * 2);
+            ctx.ellipse(x - 8 + runCycle * 0.6, y + size * 0.12, 11, 7, 0, 0, Math.PI * 2);
             ctx.fill();
-            // 鞋底
-            ctx.fillStyle = '#7f8c8d';
-            ctx.fillRect(x - 8 + runCycle * 0.6 - 10, y + size * 0.14, 20, 4);
+            // 左鞋高光
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(x - 10 + runCycle * 0.6, y + size * 0.09, 5, 3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // 左鞋边缘
+            ctx.strokeStyle = '#a02010';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(x - 8 + runCycle * 0.6, y + size * 0.12, 11, 7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // 左鞋底
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(x - 8 + runCycle * 0.6 - 11, y + size * 0.15, 22, 5);
             // 鞋底纹理
-            ctx.fillStyle = '#5d6d7e';
+            ctx.fillStyle = '#3a3a3a';
             for (let i = 0; i < 4; i++) {
-                ctx.fillRect(x - 8 + runCycle * 0.6 - 8 + i * 5, y + size * 0.14, 2, 3);
-            }
-            // 右鞋
-            ctx.fillStyle = shoeGrad;
-            ctx.beginPath();
-            ctx.ellipse(x + 8 - runCycle * 0.6, y + size * 0.12, 10, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#7f8c8d';
-            ctx.fillRect(x + 8 - runCycle * 0.6 - 10, y + size * 0.14, 20, 4);
-            ctx.fillStyle = '#5d6d7e';
-            for (let i = 0; i < 4; i++) {
-                ctx.fillRect(x + 8 - runCycle * 0.6 - 8 + i * 5, y + size * 0.14, 2, 3);
+                ctx.fillRect(x - 8 + runCycle * 0.6 - 9 + i * 5, y + size * 0.16, 3, 3);
             }
 
-            // === 身体（外套）- 精美渐变 ===
-            const bodyGrad = ctx.createLinearGradient(x - size * 0.4, y - size * 0.9, x + size * 0.4, y - size * 0.1);
+            // 右鞋阴影
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + 8 - runCycle * 0.6, y + size * 0.14, 12, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 右鞋主体
+            ctx.fillStyle = shoeGrad;
+            ctx.beginPath();
+            ctx.ellipse(x + 8 - runCycle * 0.6, y + size * 0.12, 11, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 右鞋高光
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(x + 6 - runCycle * 0.6, y + size * 0.09, 5, 3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // 右鞋边缘
+            ctx.strokeStyle = '#a02010';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.ellipse(x + 8 - runCycle * 0.6, y + size * 0.12, 11, 7, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // 右鞋底
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(x + 8 - runCycle * 0.6 - 11, y + size * 0.15, 22, 5);
+            ctx.fillStyle = '#3a3a3a';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(x + 8 - runCycle * 0.6 - 9 + i * 5, y + size * 0.16, 3, 3);
+            }
+
+            // === 身体（外套）- 3D立体 ===
+            // 身体阴影层
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.36 + 2, y - size * 0.88 + 3, size * 0.76, size * 0.78, 10);
+            ctx.fill();
+            // 身体主体 - 多层渐变
+            const bodyGrad = ctx.createLinearGradient(x - size * 0.4, y - size * 0.9, x + size * 0.5, y - size * 0.1);
             bodyGrad.addColorStop(0, jacketHighlight);
-            bodyGrad.addColorStop(0.3, jacketColor);
-            bodyGrad.addColorStop(0.7, jacketColor);
-            bodyGrad.addColorStop(1, '#0090b8');
+            bodyGrad.addColorStop(0.2, jacketColor);
+            bodyGrad.addColorStop(0.5, jacketColor);
+            bodyGrad.addColorStop(0.8, jacketShadow);
+            bodyGrad.addColorStop(1, '#005577');
             ctx.fillStyle = bodyGrad;
             ctx.beginPath();
             ctx.roundRect(x - size * 0.38, y - size * 0.9, size * 0.76, size * 0.8, 10);
             ctx.fill();
-            // 外套高光
-            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            // 身体高光
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
             ctx.beginPath();
-            ctx.roundRect(x - size * 0.35, y - size * 0.88, size * 0.25, size * 0.6, 5);
+            ctx.roundRect(x - size * 0.34, y - size * 0.87, size * 0.28, size * 0.55, 6);
             ctx.fill();
-            // 外套拉链线
-            ctx.strokeStyle = '#0080a0';
+            // 身体边缘光
+            ctx.strokeStyle = jacketHighlight;
+            ctx.lineWidth = 1.5;
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.38, y - size * 0.9, size * 0.76, size * 0.8, 10);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            // 身体轮廓线
+            ctx.strokeStyle = outlineColor;
             ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.38, y - size * 0.9, size * 0.76, size * 0.8, 10);
+            ctx.stroke();
+            // 拉链
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(x, y - size * 0.88);
             ctx.lineTo(x, y - size * 0.15);
@@ -976,145 +1082,250 @@
             // 拉链头
             ctx.fillStyle = '#ffd700';
             ctx.beginPath();
-            ctx.arc(x, y - size * 0.2, 3, 0, Math.PI * 2);
+            ctx.arc(x, y - size * 0.2, 4, 0, Math.PI * 2);
             ctx.fill();
-
-            // 外套口袋 - 精美设计
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.beginPath();
-            ctx.roundRect(x - size * 0.32, y - size * 0.58, size * 0.24, size * 0.3, 4);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.roundRect(x + size * 0.08, y - size * 0.58, size * 0.24, size * 0.3, 4);
-            ctx.fill();
-            // 口袋缝线
-            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.strokeStyle = '#b8860b';
             ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x - size * 0.32, y - size * 0.45);
-            ctx.lineTo(x - size * 0.08, y - size * 0.45);
-            ctx.moveTo(x + size * 0.08, y - size * 0.45);
-            ctx.lineTo(x + size * 0.32, y - size * 0.45);
             ctx.stroke();
 
-            // === 手臂 ===
-            // 袖子渐变
-            const armGrad = ctx.createLinearGradient(x - size * 0.5, y - size * 0.7, x - size * 0.3, y - size * 0.3);
-            armGrad.addColorStop(0, jacketHighlight);
-            armGrad.addColorStop(1, jacketColor);
-            ctx.strokeStyle = armGrad;
-            ctx.lineWidth = 9;
+            // 外套口袋
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.32, y - size * 0.58, size * 0.24, size * 0.28, 4);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.08, y - size * 0.58, size * 0.24, size * 0.28, 4);
+            ctx.fill();
+            // 口袋边缘
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.32, y - size * 0.58, size * 0.24, size * 0.28, 4);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.08, y - size * 0.58, size * 0.24, size * 0.28, 4);
+            ctx.stroke();
+
+            // === 手臂 - 3D圆柱 ===
+            // 左臂阴影
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 11;
             ctx.lineCap = 'round';
-            // 左臂（向后摆）
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.33 + 2, y - size * 0.7 + 2);
+            ctx.lineTo(x - size * 0.52 - runCycle * 0.3 + 2, y - size * 0.33 + 2);
+            ctx.stroke();
+            // 左臂主体
+            const armGrad = ctx.createLinearGradient(x - size * 0.55, y - size * 0.7, x - size * 0.25, y - size * 0.3);
+            armGrad.addColorStop(0, jacketHighlight);
+            armGrad.addColorStop(0.5, jacketColor);
+            armGrad.addColorStop(1, jacketShadow);
+            ctx.strokeStyle = armGrad;
+            ctx.lineWidth = 10;
             ctx.beginPath();
             ctx.moveTo(x - size * 0.35, y - size * 0.72);
             ctx.lineTo(x - size * 0.52 - runCycle * 0.3, y - size * 0.35);
             ctx.stroke();
+            // 左臂高光
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.37, y - size * 0.7);
+            ctx.lineTo(x - size * 0.54 - runCycle * 0.3, y - size * 0.33);
+            ctx.stroke();
             // 左拳头
-            const fistGrad = ctx.createRadialGradient(x - size * 0.52 - runCycle * 0.3 - 2, y - size * 0.35 - 2, 0, x - size * 0.52 - runCycle * 0.3, y - size * 0.32, 6);
-            fistGrad.addColorStop(0, '#ffcc99');
+            const fistGrad = ctx.createRadialGradient(x - size * 0.54 - runCycle * 0.3 - 3, y - size * 0.37 - 3, 0, x - size * 0.54 - runCycle * 0.3, y - size * 0.34, 7);
+            fistGrad.addColorStop(0, '#ffe4c4');
+            fistGrad.addColorStop(0.5, '#ffcc99');
             fistGrad.addColorStop(1, skinColor);
             ctx.fillStyle = fistGrad;
             ctx.beginPath();
-            ctx.arc(x - size * 0.52 - runCycle * 0.3, y - size * 0.32, 6, 0, Math.PI * 2);
+            ctx.arc(x - size * 0.52 - runCycle * 0.3, y - size * 0.32, 7, 0, Math.PI * 2);
             ctx.fill();
-            // 右臂（向前摆）
+            // 拳头边缘
+            ctx.strokeStyle = '#dd8844';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 右臂阴影
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 11;
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.33 + 2, y - size * 0.7 + 2);
+            ctx.lineTo(x + size * 0.52 + runCycle * 0.3 + 2, y - size * 0.33 + 2);
+            ctx.stroke();
+            // 右臂主体
             ctx.strokeStyle = armGrad;
+            ctx.lineWidth = 10;
             ctx.beginPath();
             ctx.moveTo(x + size * 0.35, y - size * 0.72);
             ctx.lineTo(x + size * 0.52 + runCycle * 0.3, y - size * 0.35);
             ctx.stroke();
+            // 右臂高光
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.33, y - size * 0.7);
+            ctx.lineTo(x + size * 0.50 + runCycle * 0.3, y - size * 0.33);
+            ctx.stroke();
             // 右拳头
-            const fistGrad2 = ctx.createRadialGradient(x + size * 0.52 + runCycle * 0.3 - 2, y - size * 0.35 - 2, 0, x + size * 0.52 + runCycle * 0.3, y - size * 0.32, 6);
-            fistGrad2.addColorStop(0, '#ffcc99');
+            const fistGrad2 = ctx.createRadialGradient(x + size * 0.54 + runCycle * 0.3 - 3, y - size * 0.37 - 3, 0, x + size * 0.54 + runCycle * 0.3, y - size * 0.34, 7);
+            fistGrad2.addColorStop(0, '#ffe4c4');
+            fistGrad2.addColorStop(0.5, '#ffcc99');
             fistGrad2.addColorStop(1, skinColor);
             ctx.fillStyle = fistGrad2;
             ctx.beginPath();
-            ctx.arc(x + size * 0.52 + runCycle * 0.3, y - size * 0.32, 6, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.52 + runCycle * 0.3, y - size * 0.32, 7, 0, Math.PI * 2);
             ctx.fill();
-
-            // === 头部 ===
-            // 帽兜/帽子效果 - 精美渐变
-            const hoodGrad = ctx.createLinearGradient(x - size * 0.35, y - size * 1.5, x + size * 0.35, y - size * 0.85);
-            hoodGrad.addColorStop(0, jacketHighlight);
-            hoodGrad.addColorStop(0.5, jacketColor);
-            hoodGrad.addColorStop(1, '#0080a0');
-            ctx.fillStyle = hoodGrad;
-            ctx.beginPath();
-            ctx.arc(x, y - size * 1.18, size * 0.36, Math.PI, 0);
-            ctx.fill();
-            // 帽兜边缘
-            ctx.strokeStyle = '#007090';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y - size * 1.18, size * 0.36, Math.PI, 0);
+            ctx.strokeStyle = '#dd8844';
+            ctx.lineWidth = 1;
             ctx.stroke();
 
-            // 脸部 - 精美渐变
-            const faceGrad = ctx.createRadialGradient(x - 3, y - size * 1.22, 0, x, y - size * 1.15, size * 0.32);
-            faceGrad.addColorStop(0, '#ffcc99');
-            faceGrad.addColorStop(0.7, skinColor);
-            faceGrad.addColorStop(1, '#e8a070');
+            // === 头部 - 3D球形 ===
+            // 帽子/帽兜 - 3D效果
+            const hoodGrad = ctx.createLinearGradient(x - size * 0.4, y - size * 1.55, x + size * 0.4, y - size * 0.8);
+            hoodGrad.addColorStop(0, jacketHighlight);
+            hoodGrad.addColorStop(0.3, jacketColor);
+            hoodGrad.addColorStop(0.7, jacketShadow);
+            hoodGrad.addColorStop(1, '#004466');
+            ctx.fillStyle = hoodGrad;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.18, size * 0.38, Math.PI, 0);
+            ctx.fill();
+            // 帽兜高光
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(x - 5, y - size * 1.45, size * 0.15, size * 0.1, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // 帽兜边缘
+            ctx.strokeStyle = outlineColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.18, size * 0.38, Math.PI, 0);
+            ctx.stroke();
+            // 帽兜边缘光
+            ctx.strokeStyle = jacketHighlight;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.18, size * 0.36, Math.PI * 1.1, Math.PI * 1.9);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // 脸部 - 3D球形渐变
+            const faceGrad = ctx.createRadialGradient(x - 4, y - size * 1.25, 0, x, y - size * 1.15, size * 0.33);
+            faceGrad.addColorStop(0, '#ffe4c4');
+            faceGrad.addColorStop(0.4, '#ffcc99');
+            faceGrad.addColorStop(0.8, skinColor);
+            faceGrad.addColorStop(1, '#dd8855');
             ctx.fillStyle = faceGrad;
             ctx.beginPath();
-            ctx.arc(x, y - size * 1.15, size * 0.3, 0, Math.PI * 2);
+            ctx.arc(x, y - size * 1.15, size * 0.32, 0, Math.PI * 2);
             ctx.fill();
+            // 脸部边缘阴影
+            ctx.strokeStyle = '#cc7744';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.15, size * 0.32, 0, Math.PI * 2);
+            ctx.stroke();
 
             if (!game.isHurt) {
-                // 眼睛（活力表情）- 精美设计
-                // 眼眶
+                // 眼睛 - 3D凹陷效果
+                // 左眼眶
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.ellipse(x - 7, y - size * 1.2, 6, 7, 0, 0, Math.PI * 2);
-                ctx.ellipse(x + 7, y - size * 1.2, 6, 7, 0, 0, Math.PI * 2);
+                ctx.ellipse(x - 7, y - size * 1.2, 7, 8, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // 眼眶边框
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeStyle = '#aa6644';
                 ctx.lineWidth = 1;
                 ctx.stroke();
-                // 眼珠
-                ctx.fillStyle = '#2c3e50';
-                ctx.beginPath();
-                ctx.ellipse(x - 6, y - size * 1.19, 3.5, 4, 0, 0, Math.PI * 2);
-                ctx.ellipse(x + 8, y - size * 1.19, 3.5, 4, 0, 0, Math.PI * 2);
+                // 左眼窝阴影
+                const eyeShadow = ctx.createRadialGradient(x - 7, y - size * 1.18, 0, x - 7, y - size * 1.18, 6);
+                eyeShadow.addColorStop(0, 'rgba(0,0,0,0.1)');
+                eyeShadow.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = eyeShadow;
                 ctx.fill();
-                // 眼珠高光 - 双层高光更闪亮
+                // 左眼珠
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.ellipse(x - 6, y - size * 1.19, 4, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 左眼珠高光
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(x - 5, y - size * 1.22, 1.8, 0, Math.PI * 2);
-                ctx.arc(x + 9, y - size * 1.22, 1.8, 0, Math.PI * 2);
+                ctx.arc(x - 5, y - size * 1.22, 2.2, 0, Math.PI * 2);
                 ctx.fill();
-                // 小高光点
-                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
                 ctx.beginPath();
-                ctx.arc(x - 7, y - size * 1.17, 0.8, 0, Math.PI * 2);
-                ctx.arc(x + 7, y - size * 1.17, 0.8, 0, Math.PI * 2);
+                ctx.arc(x - 7, y - size * 1.17, 0.9, 0, Math.PI * 2);
                 ctx.fill();
-                // 眉毛（活力）
-                ctx.strokeStyle = '#8B4513';
-                ctx.lineWidth = 2;
-                ctx.lineCap = 'round';
+
+                // 右眼眶
+                ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.moveTo(x - 12, y - size * 1.32);
-                ctx.quadraticCurveTo(x - 7, y - size * 1.35, x - 3, y - size * 1.32);
-                ctx.moveTo(x + 3, y - size * 1.32);
-                ctx.quadraticCurveTo(x + 7, y - size * 1.35, x + 12, y - size * 1.32);
+                ctx.ellipse(x + 7, y - size * 1.2, 7, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#aa6644';
+                ctx.lineWidth = 1;
                 ctx.stroke();
-                // 嘴巴（微笑）- 更甜美
-                ctx.strokeStyle = '#e74c3c';
+                // 右眼窝阴影
+                const eyeShadow2 = ctx.createRadialGradient(x + 7, y - size * 1.18, 0, x + 7, y - size * 1.18, 6);
+                eyeShadow2.addColorStop(0, 'rgba(0,0,0,0.1)');
+                eyeShadow2.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = eyeShadow2;
+                ctx.fill();
+                // 右眼珠
+                ctx.fillStyle = '#1a1a2e';
+                ctx.beginPath();
+                ctx.ellipse(x + 8, y - size * 1.19, 4, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 右眼珠高光
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(x + 9, y - size * 1.22, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath();
+                ctx.arc(x + 7, y - size * 1.17, 0.9, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 眉毛
+                ctx.strokeStyle = '#5d4037';
                 ctx.lineWidth = 2.5;
                 ctx.lineCap = 'round';
                 ctx.beginPath();
-                ctx.arc(x, y - size * 1.08, 5, 0.3, Math.PI - 0.3);
+                ctx.moveTo(x - 13, y - size * 1.34);
+                ctx.quadraticCurveTo(x - 8, y - size * 1.38, x - 3, y - size * 1.34);
                 ctx.stroke();
-                // 腮红
-                ctx.fillStyle = 'rgba(255,150,150,0.3)';
                 ctx.beginPath();
-                ctx.ellipse(x - 10, y - size * 1.1, 4, 2.5, 0, 0, Math.PI * 2);
-                ctx.ellipse(x + 10, y - size * 1.1, 4, 2.5, 0, 0, Math.PI * 2);
+                ctx.moveTo(x + 3, y - size * 1.34);
+                ctx.quadraticCurveTo(x + 8, y - size * 1.38, x + 13, y - size * 1.34);
+                ctx.stroke();
+
+                // 嘴巴（微笑）
+                ctx.strokeStyle = '#c0392b';
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.arc(x, y - size * 1.08, 5, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+
+                // 腮红
+                ctx.fillStyle = 'rgba(255,150,150,0.35)';
+                ctx.beginPath();
+                ctx.ellipse(x - 11, y - size * 1.1, 5, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(x + 11, y - size * 1.1, 5, 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 鼻子
+                ctx.fillStyle = 'rgba(200,120,80,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(x, y - size * 1.12, 2, 1.5, 0, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                // 受伤表情：痛苦眯眼
+                // 受伤表情
                 ctx.strokeStyle = '#2c3e50';
                 ctx.lineWidth = 3;
                 ctx.lineCap = 'round';
