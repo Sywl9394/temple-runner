@@ -1,0 +1,3003 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>神庙逃亡 - Temple Runner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+        }
+        body {
+            background: #0a0a1a;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+        }
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #0a0a1a 0%, #1a1a3e 50%, #2c3e50 100%);
+            box-shadow: 0 0 50px rgba(52, 152, 219, 0.3);
+            touch-action: none;
+        }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .score-panel {
+            position: absolute;
+            top: 2%;
+            left: 3%;
+            color: #FFD700;
+            font-size: clamp(14px, 3vw, 24px);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .highscore-panel {
+            position: absolute;
+            top: 2%;
+            right: 3%;
+            color: #fff;
+            font-size: clamp(12px, 2.5vw, 18px);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .controls-hint {
+            position: absolute;
+            bottom: 2%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.6);
+            font-size: clamp(10px, 1.8vw, 14px);
+            white-space: nowrap;
+        }
+        /* 手机端隐藏键盘提示，改为触控提示 */
+        @media (max-width: 768px) {
+            .controls-hint { display: none; }
+        }
+        .powerup-indicator {
+            position: absolute;
+            top: 12%;
+            left: 3%;
+            color: #00FF00;
+            font-size: clamp(13px, 2.5vw, 20px);
+            text-shadow: 0 0 10px #00FF00;
+        }
+        .invincible-btn {
+            position: absolute;
+            top: clamp(50px, 9%, 90px);
+            right: 3%;
+            padding: clamp(6px, 1.5vw, 10px) clamp(10px, 2.5vw, 18px);
+            font-size: clamp(12px, 2vw, 16px);
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(135deg, #444 0%, #222 100%);
+            border: 2px solid #666;
+            border-radius: 25px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        .invincible-btn:hover {
+            background: linear-gradient(135deg, #555 0%, #333 100%);
+            border-color: #888;
+            transform: scale(1.05);
+        }
+        .invincible-btn.active {
+            background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+            border-color: #FFD700;
+            color: #000;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 140, 0, 0.4);
+            animation: invinciblePulse 1s ease-in-out infinite;
+        }
+        @keyframes invinciblePulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 140, 0, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 140, 0, 0.6); }
+        }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            pointer-events: auto;
+        }
+        #startScreen h1 {
+            font-size: clamp(32px, 9vw, 72px);
+            color: #FFD700;
+            text-shadow: 0 0 20px #FFD700, 0 0 40px #FF8C00;
+            margin-bottom: 3%;
+            letter-spacing: 4px;
+        }
+        #startScreen .subtitle {
+            font-size: clamp(14px, 4vw, 24px);
+            color: #8B4513;
+            margin-bottom: 5%;
+        }
+        #startScreen .start-hint {
+            font-size: clamp(14px, 4vw, 28px);
+            color: #fff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        #gameOverScreen h2 {
+            font-size: clamp(26px, 8vw, 56px);
+            color: #ff4444;
+            text-shadow: 0 0 20px #ff0000;
+            margin-bottom: 4%;
+        }
+        #gameOverScreen .final-score {
+            font-size: clamp(18px, 5vw, 36px);
+            color: #FFD700;
+            margin-bottom: 3%;
+        }
+        #gameOverScreen .new-record {
+            font-size: clamp(14px, 4vw, 28px);
+            color: #00ff00;
+            margin-bottom: 4%;
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+        #gameOverScreen .restart-hint {
+            font-size: clamp(12px, 3.5vw, 24px);
+            color: #fff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .hidden {
+            display: none !important;
+        }
+        .powerup-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: #00FF00;
+            font-size: 20px;
+            text-shadow: 0 0 10px #00FF00;
+        }
+        .magnet-indicator {
+            position: absolute;
+            top: 18%;
+            left: 3%;
+            color: #FF6699;
+            font-size: clamp(13px, 2.5vw, 20px);
+            text-shadow: 0 0 10px #FF6699;
+            animation: magnetPulse 0.5s ease-in-out infinite;
+        }
+        @keyframes magnetPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        #pauseOverlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(28px, 7vw, 48px);
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        .lives-panel {
+            position: absolute;
+            top: 7%;
+            left: 3%;
+            color: #ff4444;
+            font-size: clamp(14px, 3vw, 24px);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .screen-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px) translateY(5px); }
+            40% { transform: translateX(10px) translateY(-5px); }
+            60% { transform: translateX(-5px) translateY(3px); }
+            80% { transform: translateX(5px) translateY(-3px); }
+        }
+        .damage-flash {
+            animation: damageFlash 0.5s ease-out;
+        }
+        @keyframes damageFlash {
+            0% { filter: brightness(1) sepia(0); }
+            50% { filter: brightness(2) sepia(1) hue-rotate(-50deg); }
+            100% { filter: brightness(1) sepia(0); }
+        }
+        /* ========== 移动端触控按钮 ========== */
+        #mobileControls {
+            display: none;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 22%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        @media (max-width: 1024px) {
+            #mobileControls { display: flex; }
+        }
+        /* 强制手机竖屏也显示 */
+        @media (hover: none) and (pointer: coarse) {
+            #mobileControls { display: flex; }
+        }
+        .mobile-btn-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+        .mobile-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: rgba(255,255,255,0.8);
+            user-select: none;
+            -webkit-user-select: none;
+            backdrop-filter: blur(4px);
+            transition: background 0.1s, transform 0.1s;
+            cursor: pointer;
+        }
+        .mobile-btn:active, .mobile-btn.pressed {
+            background: rgba(255,255,255,0.28);
+            transform: scale(0.92);
+        }
+        /* 暂停按钮单独样式 */
+        #mobilePauseBtn {
+            position: absolute;
+            bottom: 24%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            font-size: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 51;
+            color: rgba(255,255,255,0.7);
+            backdrop-filter: blur(4px);
+        }
+        @media (max-width: 1024px) {
+            #mobilePauseBtn { display: flex; }
+        }
+        @media (hover: none) and (pointer: coarse) {
+            #mobilePauseBtn { display: flex; }
+        }
+        /* 竖屏优化 */
+        @media (orientation: portrait) {
+            .mobile-btn {
+                width: min(18vw, 80px);
+                height: min(18vw, 80px);
+                font-size: min(7vw, 32px);
+            }
+            #mobileControls { height: 18%; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div class="score-panel">
+            <div>分数: <span id="scoreDisplay">0</span></div>
+        </div>
+        <div class="lives-panel" id="livesPanel">
+            <span id="livesDisplay">❤️❤️❤️</span>
+        </div>
+        <div class="highscore-panel">
+            <div>最高分: <span id="highScoreDisplay">0</span></div>
+        </div>
+        <div class="powerup-indicator hidden" id="powerupIndicator">
+            ⚡ 无敌时间 ⚡
+        </div>
+        <div class="magnet-indicator hidden" id="magnetIndicator">
+            🧲 吸金币 🧲
+        </div>
+        <div class="controls-hint" id="controlsHint">
+            ← A 键向左移动 | D 键向右移动 → | P 键暂停 | U 键无敌
+        </div>
+        <button class="invincible-btn" id="invincibleBtn" onclick="togglePermInvincible()">🛡️ 无敌模式</button>
+        <div id="pauseOverlay" class="hidden">⏸️ 游戏暂停</div>
+        
+        <!-- 移动端触控按钮 -->
+        <div id="mobileControls">
+            <div class="mobile-btn-area">
+                <div class="mobile-btn" id="mobileLeft">◀</div>
+            </div>
+            <div class="mobile-btn-area" style="flex:0.5;"></div>
+            <div class="mobile-btn-area">
+                <div class="mobile-btn" id="mobileRight">▶</div>
+            </div>
+        </div>
+        <div id="mobilePauseBtn">⏸</div>
+        
+        <div id="startScreen" onclick="startGame()">
+            <h1>🏛️ 神庙逃亡</h1>
+            <div class="subtitle">Temple Runner</div>
+            <div class="start-hint">点击屏幕 或 按 空格键 开始</div>
+        </div>
+        
+        <div id="gameOverScreen" class="hidden" onclick="startGame()">
+            <h2>💀 游戏结束 💀</h2>
+            <div class="final-score">最终得分: <span id="finalScore">0</span></div>
+            <div class="new-record hidden" id="newRecord">🎉 新纪录! 🎉</div>
+            <div class="restart-hint">点击屏幕 或 按 空格键 重新开始</div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 游戏配置 ====================
+        const CONFIG = {
+            lanes: 3,
+            initialSpeed: 12,
+            maxSpeed: 22,
+            speedIncrement: 0.002,
+            obstacleSpawnInterval: [80, 140],
+            coinSpawnInterval: [25, 50],
+            powerupSpawnInterval: [500, 800],
+            powerupDuration: 3000,
+            magnetDuration: 8000,
+            laneWidth: 180,
+            trackLength: 2000,
+            horizonY: 0.12,
+            playerY: 0.80,
+            collisionRadius: 25,
+            maxLives: 3,
+            invincibilityDuration: 1500,
+            jumpHeight: 130,
+            jumpDuration: 32
+        };
+
+        // ==================== 障碍物类型 ====================
+        const OBSTACLE_TYPES = [
+            { name: 'pillar', width: 1, height: 2, color: '#5a4a3a', damage: 1 },
+            { name: 'low_wall', width: 1, height: 0.8, color: '#8B4513', damage: 1 },
+            { name: 'tall_pillar', width: 0.8, height: 3, color: '#4a3a2a', damage: 1 },
+            { name: 'double_pillar', width: 1.5, height: 2.2, color: '#6b5a4a', damage: 1 },
+            { name: 'spike', width: 0.6, height: 1.5, color: '#666', damage: 2 },
+            { name: 'rock', width: 1.2, height: 1, color: '#7a6a5a', damage: 1, canJumpOver: true },
+            { name: 'small_rock', width: 0.8, height: 0.5, color: '#6a5a4a', damage: 1, canJumpOver: true },
+            { name: 'box', width: 1, height: 0.8, color: '#8B4513', damage: 1, canJumpOver: true },
+            { name: 'train', width: 1.8, height: 1.5, color: '#2c3e50', damage: 1 },
+            { name: 'train_engine', width: 2, height: 2, color: '#1a252f', damage: 1 },
+            // 新增精美障碍物
+            { name: 'neon_tower', width: 0.8, height: 2.5, color: '#1a1a2e', damage: 1 },  // 霓虹灯塔
+            { name: 'water_puddle', width: 1.2, height: 0.3, color: '#3498db', damage: 1, canJumpOver: true },  // 水坑
+            { name: 'warning_sign', width: 0.6, height: 1.8, color: '#f39c12', damage: 1 },  // 警示牌
+            { name: 'fire_barrel', width: 0.7, height: 1.2, color: '#e74c3c', damage: 1 },  // 燃烧桶
+            { name: 'laser_gate', width: 1.5, height: 2, color: '#e74c3c', damage: 1 },  // 激光门
+            { name: 'crystal', width: 0.8, height: 1.5, color: '#9b59b6', damage: 1 }  // 水晶簇
+        ];
+
+        // ==================== 游戏状态 ====================
+        const game = {
+            state: 'start',
+            score: 0,
+            highScore: parseInt(localStorage.getItem('templeRunnerHighScore')) || 0,
+            speed: CONFIG.initialSpeed,
+            playerLane: 1,
+            targetLane: 1,
+            obstacles: [],
+            coins: [],
+            powerups: [],
+            particles: [],
+            deathParticles: [],
+            dustParticles: [],       // 跑步尘土粒子
+            meteorParticles: [],     // 流星粒子
+            lastObstacleSpawn: 0,
+            lastCoinSpawn: 0,
+            lastPowerupSpawn: 0,
+            nextObstacleSpawn: 60,
+            nextCoinSpawn: 30,
+            nextPowerupSpawn: 300,
+            powerupEndTime: 0,
+            isInvincible: false,
+            isPermInvincible: false,  // 永久无敌开关
+            isMagnetActive: false,
+            magnetEndTime: 0,
+            speedLevel: 0,          // 当前速度等级（每2000积分升一级）
+            speedBoostFlash: 0,      // 速度提升时的闪烁计时器
+            isHurt: false,
+            hurtEndTime: 0,
+            frameCount: 0,
+            lives: CONFIG.maxLives,
+            isDying: false,
+            deathTimer: 0,
+            isJumping: false,
+            jumpFrame: 0,
+            jumpHeight: 0
+        };
+
+        // ==================== Canvas 设置 ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+            const ratio = 16 / 9;
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            
+            // 检测是否为手机竖屏
+            const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || 
+                             (window.innerWidth <= 768);
+            const isPortrait = h > w;
+            
+            if (isPortrait && isMobile) {
+                // 竖屏手机：宽度填满，高度按比例（留底部操作区）
+                w = window.innerWidth;
+                h = w / ratio;
+                // 如果高度超出屏幕，则以屏幕高度*0.75为准（留操作区）
+                const maxH = window.innerHeight * 0.78;
+                if (h > maxH) {
+                    h = maxH;
+                    w = h * ratio;
+                }
+            } else {
+                // 横屏或PC：保持16:9，适配窗口
+                if (w / h > ratio) {
+                    w = h * ratio;
+                } else {
+                    h = w / ratio;
+                }
+            }
+            
+            canvas.width = Math.min(1600, Math.round(w));
+            canvas.height = Math.round(canvas.width / ratio);
+            width = canvas.width;
+            height = canvas.height;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Canvas 点击开始游戏
+        canvas.addEventListener('click', () => {
+            if (game.state === 'start' || game.state === 'gameover') {
+                startGame();
+            }
+        });
+
+        // ==================== 3D 透视投影 ====================
+        function project(z, x, lane) {
+            const horizonY = height * CONFIG.horizonY;
+            const playerY = height * CONFIG.playerY;
+            // 增强透视效果：z值越大物体越小得越快
+            const scale = 1 / (1 + z * 0.002);
+            const centerX = width / 2;
+            // 修正：车道相对于玩家位置计算偏移
+            const laneOffset = (lane - game.playerLane) * CONFIG.laneWidth * scale;
+            
+            return {
+                x: centerX + laneOffset,
+                y: horizonY + (playerY - horizonY) * scale,
+                scale: scale
+            };
+        }
+
+        // ==================== 绘制函数 ====================
+        function drawTrack() {
+            // 绘制背景装饰 - 地铁隧道墙壁
+            drawTemplePillars();
+
+            // 绘制跑道地面（地铁轨道风格）
+            const horizonY = height * CONFIG.horizonY;
+            const playerY = height * CONFIG.playerY;
+
+            // 地面底色
+            const groundGrad = ctx.createLinearGradient(0, horizonY, 0, playerY + 50);
+            groundGrad.addColorStop(0, '#1a1a2e');
+            groundGrad.addColorStop(0.5, '#2c3e50');
+            groundGrad.addColorStop(1, '#34495e');
+
+            // 左右铁轨区域
+            const leftRailX = width * 0.06;
+            const rightRailX = width * 0.94;
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(leftRailX, horizonY, rightRailX - leftRailX, playerY - horizonY + 100);
+
+            // 绘制透视网格（铁轨枕木效果，滚动加快）
+            const tieOffset = (game.frameCount * game.speed * 3) % 80;
+            for (let z = -tieOffset; z < CONFIG.trackLength; z += 80) {
+                const proj = project(z, 0, 0);
+                const projRight = project(z, 0, 3);
+                if (proj.y > horizonY && proj.y < playerY + 100) {
+                    // 枕木（横向枕木条）
+                    const tieGrad = ctx.createLinearGradient(
+                        proj.x, proj.y,
+                        projRight.x, proj.y
+                    );
+                    tieGrad.addColorStop(0, '#5D4E37');
+                    tieGrad.addColorStop(0.3, '#7B6B4F');
+                    tieGrad.addColorStop(0.7, '#7B6B4F');
+                    tieGrad.addColorStop(1, '#5D4E37');
+                    ctx.fillStyle = tieGrad;
+                    ctx.fillRect(proj.x, proj.y - 3 * proj.scale, projRight.x - proj.x, 6 * proj.scale);
+                }
+            }
+
+            // 绘制铁轨（左右两条）
+            for (let lane = 0; lane < 3; lane++) {
+                drawLane(lane);
+            }
+
+            // 绘制分界线
+            drawLaneDividers();
+        }
+
+        function drawTemplePillars() {
+            const horizonY = height * CONFIG.horizonY;
+
+            // 绘制地铁隧道墙壁（左右两侧），滚动速度加快
+            for (let i = 0; i < 8; i++) {
+                const z = (game.frameCount * game.speed * 0.5 + i * 300) % CONFIG.trackLength;
+                const scale = 1 / (1 + z * 0.003);
+
+                // 左侧墙壁
+                drawTunnelWall(width * 0.06, horizonY, scale, 'left');
+                // 右侧墙壁
+                drawTunnelWall(width * 0.94, horizonY, scale, 'right');
+            }
+        }
+
+        function drawTunnelWall(x, horizonY, scale, side) {
+            const wallHeight = 300 * scale;
+            const wallWidth = 60 * scale;
+            const dir = side === 'left' ? 1 : -1;
+            const wx = side === 'left' ? x : x;
+
+            // 墙壁主体 - 混凝土质感
+            const wGrad = ctx.createLinearGradient(
+                side === 'left' ? wx : wx - wallWidth,
+                horizonY,
+                side === 'left' ? wx + wallWidth : wx,
+                horizonY
+            );
+            wGrad.addColorStop(0, '#2c3e50');
+            wGrad.addColorStop(0.5, '#34495e');
+            wGrad.addColorStop(1, '#2c3e50');
+            ctx.fillStyle = wGrad;
+            ctx.fillRect(side === 'left' ? wx : wx - wallWidth, horizonY - wallHeight, wallWidth, wallHeight + 200);
+
+            // 墙壁边缘高光
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            if (side === 'left') {
+                ctx.fillRect(wx, horizonY - wallHeight, wallWidth * 0.3, wallHeight + 200);
+            } else {
+                ctx.fillRect(wx - wallWidth, horizonY - wallHeight, wallWidth * 0.3, wallHeight + 200);
+            }
+
+            // 墙壁砖块纹理
+            ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+            ctx.lineWidth = 1;
+            for (let row = 0; row < 6; row++) {
+                const rowY = horizonY - wallHeight + row * (wallHeight / 5);
+                ctx.beginPath();
+                ctx.moveTo(side === 'left' ? wx : wx - wallWidth, rowY);
+                ctx.lineTo(side === 'left' ? wx + wallWidth : wx, rowY);
+                ctx.stroke();
+            }
+
+            // 霓虹灯管（随机颜色装饰）
+            if (Math.floor(scale * 10) % 3 === 0) {
+                const neonColors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
+                const neonColor = neonColors[Math.floor(scale * 100) % neonColors.length];
+                ctx.fillStyle = neonColor;
+                ctx.shadowColor = neonColor;
+                ctx.shadowBlur = 8 * scale;
+                ctx.fillRect(
+                    side === 'left' ? wx + wallWidth * 0.3 : wx - wallWidth * 0.8,
+                    horizonY - wallHeight * 0.4,
+                    wallWidth * 0.4,
+                    wallWidth * 0.15
+                );
+                ctx.shadowBlur = 0;
+            }
+
+            // 地铁广告牌
+            if (scale > 0.4) {
+                const adW = wallWidth * 0.7;
+                const adH = wallWidth * 0.5;
+                const adX = side === 'left' ? wx + wallWidth * 0.15 : wx - wallWidth * 0.85;
+                const adY = horizonY - wallHeight * 0.7;
+
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(adX, adY, adW, adH);
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 1.5 * scale;
+                ctx.strokeRect(adX, adY, adW, adH);
+
+                // 广告内容
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = `${8 * scale}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText('SUBWAY', adX + adW / 2, adY + adH * 0.4);
+                ctx.fillStyle = '#fff';
+                ctx.fillText('RUN!', adX + adW / 2, adY + adH * 0.7);
+            }
+        }
+
+        function drawPillar(x, baseY, scale, color) {
+            const pillarHeight = 200 * scale;
+            const pillarWidth = 40 * scale;
+
+            ctx.fillStyle = color;
+            ctx.fillRect(x - pillarWidth/2, baseY - pillarHeight, pillarWidth, pillarHeight);
+
+            ctx.fillStyle = '#6b4423';
+            ctx.fillRect(x - pillarWidth * 0.7, baseY - pillarHeight - 20 * scale, pillarWidth * 1.4, 20 * scale);
+
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1;
+            for (let j = 0; j < 5; j++) {
+                const y = baseY - pillarHeight * (j + 1) / 6;
+                ctx.beginPath();
+                ctx.moveTo(x - pillarWidth/2, y);
+                ctx.lineTo(x + pillarWidth/2, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawLane(lane) {
+            const horizonY = height * CONFIG.horizonY;
+            const playerY = height * CONFIG.playerY;
+
+            // 地铁轨道区域渐变
+            const gradient = ctx.createLinearGradient(0, horizonY, 0, playerY);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(0.4, '#2c3e50');
+            gradient.addColorStop(1, '#34495e');
+
+            ctx.fillStyle = gradient;
+
+            const nearZ = 0;
+            const farZ = CONFIG.trackLength;
+
+            const nearLeft = project(nearZ, 0, lane - 0.5);
+            const nearRight = project(nearZ, 0, lane + 0.5);
+            const farLeft = project(farZ, 0, lane - 0.5);
+            const farRight = project(farZ, 0, lane + 0.5);
+
+            ctx.beginPath();
+            ctx.moveTo(nearLeft.x, playerY);
+            ctx.lineTo(nearRight.x, playerY);
+            ctx.lineTo(farRight.x, farRight.y);
+            ctx.lineTo(farLeft.x, farLeft.y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawLaneDividers() {
+            const horizonY = height * CONFIG.horizonY;
+            const playerY = height * CONFIG.playerY;
+            const playerLaneRounded = Math.round(game.playerLane);
+
+            // 黄色虚线车道分隔线
+            ctx.setLineDash([12, 8]);
+            ctx.strokeStyle = 'rgba(241, 196, 15, 0.5)';
+            ctx.lineWidth = 2;
+
+            for (let lane = 0; lane < 2; lane++) {
+                ctx.beginPath();
+                const near = project(0, 0, lane + 0.5);
+                ctx.moveTo(near.x, playerY);
+                for (let z = 50; z <= CONFIG.trackLength; z += 50) {
+                    const proj = project(z, 0, lane + 0.5);
+                    if (proj.y > horizonY) {
+                        ctx.lineTo(proj.x, proj.y);
+                    }
+                }
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // 玩家所在车道的边缘线（白色高亮）
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2.5;
+
+            // 左边缘
+            ctx.beginPath();
+            const leftNear = project(0, 0, playerLaneRounded - 0.5);
+            ctx.moveTo(leftNear.x, playerY);
+            for (let z = 50; z <= CONFIG.trackLength; z += 50) {
+                const proj = project(z, 0, playerLaneRounded - 0.5);
+                if (proj.y > horizonY) {
+                    ctx.lineTo(proj.x, proj.y);
+                }
+            }
+            ctx.stroke();
+
+            // 右边缘
+            ctx.beginPath();
+            const rightNear = project(0, 0, playerLaneRounded + 0.5);
+            ctx.moveTo(rightNear.x, playerY);
+            for (let z = 50; z <= CONFIG.trackLength; z += 50) {
+                const proj = project(z, 0, playerLaneRounded + 0.5);
+                if (proj.y > horizonY) {
+                    ctx.lineTo(proj.x, proj.y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawPlayer() {
+            // 玩家始终在屏幕中心，地铁跑酷风格角色 - 精美版
+            const x = width / 2;
+            const baseY = height * CONFIG.playerY;
+            const y = baseY - game.jumpHeight;
+            const size = 42;
+
+            // 受伤闪烁
+            if (game.isHurt && Math.floor(game.frameCount / 3) % 2 === 0) {
+                ctx.globalAlpha = 0.3;
+            }
+
+            // 跑步节奏（跑动时腿部左右摆动，频率和幅度随速度提升）
+            const speedRatio = game.speed / CONFIG.maxSpeed;
+            const runFreq = 0.35 + speedRatio * 0.35;
+            const runCycle = Math.sin(game.frameCount * runFreq) * (14 + speedRatio * 6);
+
+            // 角色主体颜色
+            let jacketColor = '#00B4D8';
+            let pantsColor = '#1a1a2e';
+            let skinColor = '#F4A460';
+            let jacketHighlight = '#5dd3f3';
+            if (game.isInvincible) {
+                const glow = Math.sin(game.frameCount * 0.4) * 0.4 + 0.6;
+                jacketColor = `rgba(0, 255, 136, ${glow})`;
+                jacketHighlight = `rgba(150, 255, 200, ${glow})`;
+                skinColor = `rgba(0, 255, 136, ${glow})`;
+            } else if (game.isHurt) {
+                jacketColor = '#ff4444';
+                jacketHighlight = '#ff8888';
+            }
+
+            // 阴影 - 精美渐变阴影
+            const shadowGrad = ctx.createRadialGradient(x, baseY + 8, 0, x, baseY + 8, size * 1.1);
+            shadowGrad.addColorStop(0, 'rgba(0,0,0,0.4)');
+            shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.2)');
+            shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = shadowGrad;
+            ctx.beginPath();
+            ctx.ellipse(x, baseY + 8, size * 1.0, size * 0.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.save();
+
+            // === 背包（在身体后方）- 精美渐变 ===
+            const bagGrad = ctx.createLinearGradient(x + size * 0.15, y - size * 0.85, x + size * 0.6, y - size * 0.15);
+            bagGrad.addColorStop(0, '#f39c12');
+            bagGrad.addColorStop(0.5, '#e67e22');
+            bagGrad.addColorStop(1, '#d35400');
+            ctx.fillStyle = bagGrad;
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.15, y - size * 0.85, size * 0.45, size * 0.7, 6);
+            ctx.fill();
+            // 背包高光
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.18, y - size * 0.82, size * 0.15, size * 0.4, 3);
+            ctx.fill();
+            // 背包拉链
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.37, y - size * 0.75);
+            ctx.lineTo(x + size * 0.37, y - size * 0.25);
+            ctx.stroke();
+            // 背包装饰条
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(x + size * 0.2, y - size * 0.55, size * 0.35, size * 0.05);
+
+            // === 腿部 - 渐变效果 ===
+            // 裤子渐变
+            const pantsGrad = ctx.createLinearGradient(x - 12, y - size * 0.2, x + 12, y + size * 0.15);
+            pantsGrad.addColorStop(0, '#2a2a4e');
+            pantsGrad.addColorStop(0.5, pantsColor);
+            pantsGrad.addColorStop(1, '#0a0a1e');
+            ctx.strokeStyle = pantsGrad;
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            // 左腿
+            ctx.beginPath();
+            ctx.moveTo(x - 8, y - size * 0.15);
+            ctx.lineTo(x - 8 + runCycle * 0.6, y + size * 0.1);
+            ctx.stroke();
+            // 右腿
+            ctx.beginPath();
+            ctx.moveTo(x + 8, y - size * 0.15);
+            ctx.lineTo(x + 8 - runCycle * 0.6, y + size * 0.1);
+            ctx.stroke();
+
+            // 鞋子 - 精美渐变
+            const shoeGrad = ctx.createLinearGradient(0, y + size * 0.05, 0, y + size * 0.18);
+            shoeGrad.addColorStop(0, '#ff6b6b');
+            shoeGrad.addColorStop(0.5, '#e74c3c');
+            shoeGrad.addColorStop(1, '#c0392b');
+            // 左鞋
+            ctx.fillStyle = shoeGrad;
+            ctx.beginPath();
+            ctx.ellipse(x - 8 + runCycle * 0.6, y + size * 0.12, 10, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // 鞋底
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(x - 8 + runCycle * 0.6 - 10, y + size * 0.14, 20, 4);
+            // 鞋底纹理
+            ctx.fillStyle = '#5d6d7e';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(x - 8 + runCycle * 0.6 - 8 + i * 5, y + size * 0.14, 2, 3);
+            }
+            // 右鞋
+            ctx.fillStyle = shoeGrad;
+            ctx.beginPath();
+            ctx.ellipse(x + 8 - runCycle * 0.6, y + size * 0.12, 10, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(x + 8 - runCycle * 0.6 - 10, y + size * 0.14, 20, 4);
+            ctx.fillStyle = '#5d6d7e';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(x + 8 - runCycle * 0.6 - 8 + i * 5, y + size * 0.14, 2, 3);
+            }
+
+            // === 身体（外套）- 精美渐变 ===
+            const bodyGrad = ctx.createLinearGradient(x - size * 0.4, y - size * 0.9, x + size * 0.4, y - size * 0.1);
+            bodyGrad.addColorStop(0, jacketHighlight);
+            bodyGrad.addColorStop(0.3, jacketColor);
+            bodyGrad.addColorStop(0.7, jacketColor);
+            bodyGrad.addColorStop(1, '#0090b8');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.38, y - size * 0.9, size * 0.76, size * 0.8, 10);
+            ctx.fill();
+            // 外套高光
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.35, y - size * 0.88, size * 0.25, size * 0.6, 5);
+            ctx.fill();
+            // 外套拉链线
+            ctx.strokeStyle = '#0080a0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y - size * 0.88);
+            ctx.lineTo(x, y - size * 0.15);
+            ctx.stroke();
+            // 拉链头
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(x, y - size * 0.2, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 外套口袋 - 精美设计
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.roundRect(x - size * 0.32, y - size * 0.58, size * 0.24, size * 0.3, 4);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(x + size * 0.08, y - size * 0.58, size * 0.24, size * 0.3, 4);
+            ctx.fill();
+            // 口袋缝线
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.32, y - size * 0.45);
+            ctx.lineTo(x - size * 0.08, y - size * 0.45);
+            ctx.moveTo(x + size * 0.08, y - size * 0.45);
+            ctx.lineTo(x + size * 0.32, y - size * 0.45);
+            ctx.stroke();
+
+            // === 手臂 ===
+            // 袖子渐变
+            const armGrad = ctx.createLinearGradient(x - size * 0.5, y - size * 0.7, x - size * 0.3, y - size * 0.3);
+            armGrad.addColorStop(0, jacketHighlight);
+            armGrad.addColorStop(1, jacketColor);
+            ctx.strokeStyle = armGrad;
+            ctx.lineWidth = 9;
+            ctx.lineCap = 'round';
+            // 左臂（向后摆）
+            ctx.beginPath();
+            ctx.moveTo(x - size * 0.35, y - size * 0.72);
+            ctx.lineTo(x - size * 0.52 - runCycle * 0.3, y - size * 0.35);
+            ctx.stroke();
+            // 左拳头
+            const fistGrad = ctx.createRadialGradient(x - size * 0.52 - runCycle * 0.3 - 2, y - size * 0.35 - 2, 0, x - size * 0.52 - runCycle * 0.3, y - size * 0.32, 6);
+            fistGrad.addColorStop(0, '#ffcc99');
+            fistGrad.addColorStop(1, skinColor);
+            ctx.fillStyle = fistGrad;
+            ctx.beginPath();
+            ctx.arc(x - size * 0.52 - runCycle * 0.3, y - size * 0.32, 6, 0, Math.PI * 2);
+            ctx.fill();
+            // 右臂（向前摆）
+            ctx.strokeStyle = armGrad;
+            ctx.beginPath();
+            ctx.moveTo(x + size * 0.35, y - size * 0.72);
+            ctx.lineTo(x + size * 0.52 + runCycle * 0.3, y - size * 0.35);
+            ctx.stroke();
+            // 右拳头
+            const fistGrad2 = ctx.createRadialGradient(x + size * 0.52 + runCycle * 0.3 - 2, y - size * 0.35 - 2, 0, x + size * 0.52 + runCycle * 0.3, y - size * 0.32, 6);
+            fistGrad2.addColorStop(0, '#ffcc99');
+            fistGrad2.addColorStop(1, skinColor);
+            ctx.fillStyle = fistGrad2;
+            ctx.beginPath();
+            ctx.arc(x + size * 0.52 + runCycle * 0.3, y - size * 0.32, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // === 头部 ===
+            // 帽兜/帽子效果 - 精美渐变
+            const hoodGrad = ctx.createLinearGradient(x - size * 0.35, y - size * 1.5, x + size * 0.35, y - size * 0.85);
+            hoodGrad.addColorStop(0, jacketHighlight);
+            hoodGrad.addColorStop(0.5, jacketColor);
+            hoodGrad.addColorStop(1, '#0080a0');
+            ctx.fillStyle = hoodGrad;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.18, size * 0.36, Math.PI, 0);
+            ctx.fill();
+            // 帽兜边缘
+            ctx.strokeStyle = '#007090';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.18, size * 0.36, Math.PI, 0);
+            ctx.stroke();
+
+            // 脸部 - 精美渐变
+            const faceGrad = ctx.createRadialGradient(x - 3, y - size * 1.22, 0, x, y - size * 1.15, size * 0.32);
+            faceGrad.addColorStop(0, '#ffcc99');
+            faceGrad.addColorStop(0.7, skinColor);
+            faceGrad.addColorStop(1, '#e8a070');
+            ctx.fillStyle = faceGrad;
+            ctx.beginPath();
+            ctx.arc(x, y - size * 1.15, size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (!game.isHurt) {
+                // 眼睛（活力表情）- 精美设计
+                // 眼眶
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.ellipse(x - 7, y - size * 1.2, 6, 7, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 7, y - size * 1.2, 6, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 眼眶边框
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                // 眼珠
+                ctx.fillStyle = '#2c3e50';
+                ctx.beginPath();
+                ctx.ellipse(x - 6, y - size * 1.19, 3.5, 4, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 8, y - size * 1.19, 3.5, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 眼珠高光 - 双层高光更闪亮
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(x - 5, y - size * 1.22, 1.8, 0, Math.PI * 2);
+                ctx.arc(x + 9, y - size * 1.22, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+                // 小高光点
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.beginPath();
+                ctx.arc(x - 7, y - size * 1.17, 0.8, 0, Math.PI * 2);
+                ctx.arc(x + 7, y - size * 1.17, 0.8, 0, Math.PI * 2);
+                ctx.fill();
+                // 眉毛（活力）
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x - 12, y - size * 1.32);
+                ctx.quadraticCurveTo(x - 7, y - size * 1.35, x - 3, y - size * 1.32);
+                ctx.moveTo(x + 3, y - size * 1.32);
+                ctx.quadraticCurveTo(x + 7, y - size * 1.35, x + 12, y - size * 1.32);
+                ctx.stroke();
+                // 嘴巴（微笑）- 更甜美
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.arc(x, y - size * 1.08, 5, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+                // 腮红
+                ctx.fillStyle = 'rgba(255,150,150,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x - 10, y - size * 1.1, 4, 2.5, 0, 0, Math.PI * 2);
+                ctx.ellipse(x + 10, y - size * 1.1, 4, 2.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // 受伤表情：痛苦眯眼
+                ctx.strokeStyle = '#2c3e50';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x - 12, y - size * 1.22);
+                ctx.lineTo(x - 4, y - size * 1.18);
+                ctx.moveTo(x + 4, y - size * 1.18);
+                ctx.lineTo(x + 12, y - size * 1.22);
+                ctx.stroke();
+                // 痛苦嘴巴
+                ctx.fillStyle = '#2c3e50';
+                ctx.beginPath();
+                ctx.ellipse(x, y - size * 1.08, 6, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+            ctx.globalAlpha = 1;
+
+            // 无敌光环 - 精美发光效果
+            if (game.isInvincible) {
+                // 外层光环
+                ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.arc(x, y - size * 0.4, size * 1.3, 0, Math.PI * 2);
+                ctx.stroke();
+                // 内层光环
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 5]);
+                ctx.beginPath();
+                ctx.arc(x, y - size * 0.4, size * 1.1, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                // 粒子效果
+                for (let i = 0; i < 6; i++) {
+                    const angle = (game.frameCount * 0.05 + i * Math.PI / 3) % (Math.PI * 2);
+                    const px = x + Math.cos(angle) * size * 1.4;
+                    const py = y - size * 0.4 + Math.sin(angle) * size * 0.8;
+                    ctx.fillStyle = '#00ff88';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 受伤红圈 - 脉动效果
+            if (game.isHurt) {
+                const hurtPulse = Math.sin(game.frameCount * 0.3) * 0.3 + 0.7;
+                ctx.strokeStyle = `rgba(255, 68, 68, ${hurtPulse})`;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(x, y - size * 0.4, size * 1.1, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+                function drawObstacles() {
+            game.obstacles.forEach(obs => {
+                if (obs.z < 0 || obs.z > CONFIG.trackLength) return;
+
+                const proj = project(obs.z, 0, obs.lane);
+                const baseSize = 100 * proj.scale;
+                const type = obs.type || OBSTACLE_TYPES[0];
+
+                ctx.lineWidth = 3 * proj.scale;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                switch(type.name) {
+                    case 'pillar':
+                        // 柱子主体 - 金属质感渐变
+                        var pGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.45, proj.y,
+                            proj.x + baseSize * 0.45, proj.y
+                        );
+                        pGrad.addColorStop(0, '#1a1a1a');
+                        pGrad.addColorStop(0.3, '#3a3a3a');
+                        pGrad.addColorStop(0.5, '#4a4a4a');
+                        pGrad.addColorStop(0.7, '#3a3a3a');
+                        pGrad.addColorStop(1, '#1a1a1a');
+                        ctx.fillStyle = pGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.45, proj.y - baseSize * 2, baseSize * 0.9, baseSize * 2);
+                        // 金属高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                        ctx.fillRect(proj.x - baseSize * 0.42, proj.y - baseSize * 2, baseSize * 0.15, baseSize * 2);
+                        ctx.strokeStyle = '#0a0a0a';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.45, proj.y - baseSize * 2, baseSize * 0.9, baseSize * 2);
+                        // 霓虹警示灯
+                        ctx.fillStyle = '#FF6B6B';
+                        ctx.shadowColor = '#FF6B6B';
+                        ctx.shadowBlur = 15 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y - baseSize * 1.2, baseSize * 0.2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        // 霓虹灯管
+                        ctx.fillStyle = '#4ECDC4';
+                        ctx.shadowColor = '#4ECDC4';
+                        ctx.shadowBlur = 8 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 0.25, proj.y - baseSize * 1.6, baseSize * 0.5, baseSize * 0.12);
+                        ctx.shadowBlur = 0;
+                        // 小装饰灯
+                        ctx.fillStyle = '#FFE66D';
+                        ctx.shadowColor = '#FFE66D';
+                        ctx.shadowBlur = 6 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x - baseSize * 0.2, proj.y - baseSize * 0.6, baseSize * 0.1, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        // 顶部警示灯
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.shadowColor = '#e74c3c';
+                        ctx.shadowBlur = 12 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y - baseSize * 2.05, baseSize * 0.12, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'low_wall':
+                        // 矮墙 - 混凝土质感
+                        var wGrad = ctx.createLinearGradient(0, proj.y - baseSize * 0.8, 0, proj.y);
+                        wGrad.addColorStop(0, '#6D7A8A');
+                        wGrad.addColorStop(0.5, '#5D6D7E');
+                        wGrad.addColorStop(1, '#3D4D5E');
+                        ctx.fillStyle = wGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.75, proj.y - baseSize * 0.8, baseSize * 1.5, baseSize * 0.8);
+                        // 高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                        ctx.fillRect(proj.x - baseSize * 0.75, proj.y - baseSize * 0.8, baseSize * 1.5, baseSize * 0.15);
+                        ctx.strokeStyle = '#2c3e50';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.75, proj.y - baseSize * 0.8, baseSize * 1.5, baseSize * 0.8);
+                        // 砖块纹理
+                        ctx.lineWidth = 1 * proj.scale;
+                        for (var r = 1; r < 4; r++) {
+                            var rowY = proj.y - baseSize * 0.8 + r * baseSize * 0.2;
+                            ctx.beginPath();
+                            ctx.moveTo(proj.x - baseSize * 0.75, rowY);
+                            ctx.lineTo(proj.x + baseSize * 0.75, rowY);
+                            ctx.stroke();
+                        }
+                        // 涂鸦装饰
+                        ctx.fillStyle = '#9B59B6';
+                        ctx.font = 'bold ' + (baseSize * 0.35) + 'px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('★', proj.x, proj.y - baseSize * 0.3);
+                        // 警戒条纹
+                        ctx.fillStyle = '#F1C40F';
+                        ctx.fillRect(proj.x - baseSize * 0.75, proj.y - baseSize * 0.85, baseSize * 1.5, baseSize * 0.08);
+                        for (var s = 0; s < 5; s++) {
+                            ctx.fillStyle = s % 2 === 0 ? '#2c3e50' : '#F1C40F';
+                            ctx.fillRect(proj.x - baseSize * 0.75 + s * baseSize * 0.3, proj.y - baseSize * 0.85, baseSize * 0.15, baseSize * 0.08);
+                        }
+                        break;
+
+                    case 'tall_pillar':
+                        // 高柱 - 地铁隧道柱
+                        var tpGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.5, proj.y,
+                            proj.x + baseSize * 0.5, proj.y
+                        );
+                        tpGrad.addColorStop(0, '#3a3a3a');
+                        tpGrad.addColorStop(0.3, '#5a5a5a');
+                        tpGrad.addColorStop(0.5, '#7a7a7a');
+                        tpGrad.addColorStop(0.7, '#5a5a5a');
+                        tpGrad.addColorStop(1, '#3a3a3a');
+                        ctx.fillStyle = tpGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.5, proj.y - baseSize * 3.2, baseSize, baseSize * 3.2);
+                        // 金属高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                        ctx.fillRect(proj.x - baseSize * 0.47, proj.y - baseSize * 3.2, baseSize * 0.12, baseSize * 3.2);
+                        ctx.strokeStyle = '#1a1a1a';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.5, proj.y - baseSize * 3.2, baseSize, baseSize * 3.2);
+                        // 黄色警示条
+                        ctx.fillStyle = '#F1C40F';
+                        ctx.shadowColor = '#F1C40F';
+                        ctx.shadowBlur = 5 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 0.52, proj.y - baseSize * 0.5, baseSize * 1.04, baseSize * 0.12);
+                        ctx.fillRect(proj.x - baseSize * 0.52, proj.y - baseSize * 3.0, baseSize * 1.04, baseSize * 0.12);
+                        ctx.shadowBlur = 0;
+                        // 顶部霓虹灯
+                        ctx.fillStyle = '#3498db';
+                        ctx.shadowColor = '#3498db';
+                        ctx.shadowBlur = 10 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y - baseSize * 2.8, baseSize * 0.1, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'double_pillar':
+                        // 双柱 - 带横杆
+                        var dpGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.9, proj.y,
+                            proj.x + baseSize * 0.9, proj.y
+                        );
+                        dpGrad.addColorStop(0, '#5D6D7E');
+                        dpGrad.addColorStop(0.5, '#85929E');
+                        dpGrad.addColorStop(1, '#5D6D7E');
+                        ctx.fillStyle = dpGrad;
+                        ctx.fillRect(proj.x - baseSize * 1.0, proj.y - baseSize * 2.4, baseSize * 0.4, baseSize * 2.4);
+                        ctx.fillRect(proj.x + baseSize * 0.6, proj.y - baseSize * 2.4, baseSize * 0.4, baseSize * 2.4);
+                        ctx.strokeStyle = '#2c3e50';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 1.0, proj.y - baseSize * 2.4, baseSize * 0.4, baseSize * 2.4);
+                        ctx.strokeRect(proj.x + baseSize * 0.6, proj.y - baseSize * 2.4, baseSize * 0.4, baseSize * 2.4);
+                        // 横杆
+                        ctx.fillStyle = '#F39C12';
+                        ctx.shadowColor = '#F39C12';
+                        ctx.shadowBlur = 5 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 1.0, proj.y - baseSize * 2.5, baseSize * 2.0, baseSize * 0.15);
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = '#d68910';
+                        ctx.strokeRect(proj.x - baseSize * 1.0, proj.y - baseSize * 2.5, baseSize * 2.0, baseSize * 0.15);
+                        // 竖线装饰
+                        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                        ctx.lineWidth = 1 * proj.scale;
+                        for (var n = 0; n < 5; n++) {
+                            ctx.beginPath();
+                            ctx.moveTo(proj.x - baseSize * 0.8 + n * baseSize * 0.35, proj.y - baseSize * 2.4);
+                            ctx.lineTo(proj.x - baseSize * 0.8 + n * baseSize * 0.35, proj.y);
+                            ctx.stroke();
+                        }
+                        break;
+
+                    case 'spike':
+                        // 金属维护锥
+                        ctx.save();
+                        ctx.translate(proj.x, proj.y);
+                        // 底座
+                        ctx.fillStyle = '#F39C12';
+                        ctx.shadowColor = '#F39C12';
+                        ctx.shadowBlur = 3 * proj.scale;
+                        ctx.fillRect(-baseSize * 0.5, -baseSize * 0.08, baseSize, baseSize * 0.08);
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = '#d68910';
+                        ctx.strokeRect(-baseSize * 0.5, -baseSize * 0.08, baseSize, baseSize * 0.08);
+                        // 锥体金属渐变
+                        var spGrad = ctx.createLinearGradient(-baseSize * 0.3, 0, baseSize * 0.3, 0);
+                        spGrad.addColorStop(0, '#5a6a6d');
+                        spGrad.addColorStop(0.3, '#9aa5a6');
+                        spGrad.addColorStop(0.5, '#bdc3c7');
+                        spGrad.addColorStop(0.7, '#9aa5a6');
+                        spGrad.addColorStop(1, '#5a6a6d');
+                        ctx.fillStyle = spGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -baseSize * 1.5);
+                        ctx.lineTo(baseSize * 0.4, -baseSize * 0.08);
+                        ctx.lineTo(-baseSize * 0.4, -baseSize * 0.08);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#3a4a4d';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.stroke();
+                        // 红色警示条
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.shadowColor = '#e74c3c';
+                        ctx.shadowBlur = 5 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(0, -baseSize * 1.3);
+                        ctx.lineTo(baseSize * 0.22, -baseSize * 0.55);
+                        ctx.lineTo(-baseSize * 0.22, -baseSize * 0.55);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        ctx.restore();
+                        break;
+
+                    case 'rock':
+                        // 混凝土碎石 - 多层次
+                        var rGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.8, proj.y - baseSize * 0.9,
+                            proj.x + baseSize * 0.7, proj.y
+                        );
+                        rGrad.addColorStop(0, '#5f6f7f');
+                        rGrad.addColorStop(0.3, '#7f8f9f');
+                        rGrad.addColorStop(0.5, '#95a5a6');
+                        rGrad.addColorStop(0.7, '#7f8f9f');
+                        rGrad.addColorStop(1, '#4d5d6d');
+                        ctx.fillStyle = rGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.65, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.85, proj.y - baseSize * 0.6);
+                        ctx.lineTo(proj.x - baseSize * 0.35, proj.y - baseSize * 0.95);
+                        ctx.lineTo(proj.x + baseSize * 0.45, proj.y - baseSize * 0.82);
+                        ctx.lineTo(proj.x + baseSize * 0.72, proj.y - baseSize * 0.35);
+                        ctx.lineTo(proj.x + baseSize * 0.5, proj.y);
+                        ctx.closePath();
+                        ctx.fill();
+                        // 高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.5, proj.y - baseSize * 0.6);
+                        ctx.lineTo(proj.x - baseSize * 0.35, proj.y - baseSize * 0.95);
+                        ctx.lineTo(proj.x + baseSize * 0.2, proj.y - baseSize * 0.7);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#3a4a58';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.stroke();
+                        // 裂纹
+                        ctx.strokeStyle = '#3a4a58';
+                        ctx.lineWidth = 1 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.2, proj.y - baseSize * 0.3);
+                        ctx.lineTo(proj.x - baseSize * 0.1, proj.y - baseSize * 0.6);
+                        ctx.lineTo(proj.x + baseSize * 0.15, proj.y - baseSize * 0.5);
+                        ctx.stroke();
+                        break;
+
+                    case 'small_rock':
+                        // 小碎石
+                        var srGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.5, proj.y,
+                            proj.x + baseSize * 0.5, proj.y
+                        );
+                        srGrad.addColorStop(0, '#4a5a6a');
+                        srGrad.addColorStop(0.5, '#7a8a9a');
+                        srGrad.addColorStop(1, '#4a5a6a');
+                        ctx.fillStyle = srGrad;
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - baseSize * 0.22, baseSize * 0.55, baseSize * 0.22, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#3a4a5a';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.stroke();
+                        // 顶层
+                        ctx.fillStyle = '#8a9aa8';
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - baseSize * 0.32, baseSize * 0.4, baseSize * 0.18, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#4a5a6a';
+                        ctx.stroke();
+                        break;
+
+                    case 'box':
+                        // 施工木箱 - 精美渐变
+                        var bGrad = ctx.createLinearGradient(
+                            proj.x - baseSize * 0.4, proj.y - baseSize * 0.8,
+                            proj.x + baseSize * 0.4, proj.y
+                        );
+                        bGrad.addColorStop(0, '#E67E22');
+                        bGrad.addColorStop(0.3, '#F39C12');
+                        bGrad.addColorStop(0.5, '#E67E22');
+                        bGrad.addColorStop(0.7, '#D35400');
+                        bGrad.addColorStop(1, '#A04000');
+                        ctx.fillStyle = bGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.4, proj.y - baseSize * 0.8, baseSize * 0.8, baseSize * 0.8);
+                        // 高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                        ctx.fillRect(proj.x - baseSize * 0.4, proj.y - baseSize * 0.8, baseSize * 0.8, baseSize * 0.15);
+                        ctx.strokeStyle = '#6D2000';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.4, proj.y - baseSize * 0.8, baseSize * 0.8, baseSize * 0.8);
+                        // 木板纹理
+                        ctx.strokeStyle = '#8B4513';
+                        ctx.lineWidth = 1.5 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.4, proj.y - baseSize * 0.53);
+                        ctx.lineTo(proj.x + baseSize * 0.4, proj.y - baseSize * 0.53);
+                        ctx.moveTo(proj.x - baseSize * 0.4, proj.y - baseSize * 0.27);
+                        ctx.lineTo(proj.x + baseSize * 0.4, proj.y - baseSize * 0.27);
+                        ctx.stroke();
+                        // 铁皮角
+                        ctx.fillStyle = '#95a5a6';
+                        ctx.shadowColor = '#666';
+                        ctx.shadowBlur = 2 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 0.42, proj.y - baseSize * 0.82, baseSize * 0.12, baseSize * 0.12);
+                        ctx.fillRect(proj.x + baseSize * 0.3, proj.y - baseSize * 0.82, baseSize * 0.12, baseSize * 0.12);
+                        ctx.fillRect(proj.x - baseSize * 0.42, proj.y - baseSize * 0.04, baseSize * 0.12, baseSize * 0.12);
+                        ctx.fillRect(proj.x + baseSize * 0.3, proj.y - baseSize * 0.04, baseSize * 0.12, baseSize * 0.12);
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'train':
+                        // 地铁车厢 - 精美渐变
+                        var trGrad = ctx.createLinearGradient(0, proj.y - baseSize * 1.5, 0, proj.y);
+                        trGrad.addColorStop(0, '#1a252f');
+                        trGrad.addColorStop(0.3, '#2c3e50');
+                        trGrad.addColorStop(0.5, '#34495E');
+                        trGrad.addColorStop(1, '#1a252f');
+                        ctx.fillStyle = trGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.95, proj.y - baseSize * 1.5, baseSize * 1.9, baseSize * 1.5);
+                        // 高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                        ctx.fillRect(proj.x - baseSize * 0.95, proj.y - baseSize * 1.5, baseSize * 1.9, baseSize * 0.3);
+                        ctx.strokeStyle = '#0d1318';
+                        ctx.lineWidth = 3 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.95, proj.y - baseSize * 1.5, baseSize * 1.9, baseSize * 1.5);
+                        // 车窗发光
+                        ctx.fillStyle = '#85C1E9';
+                        ctx.shadowColor = '#85C1E9';
+                        ctx.shadowBlur = 10 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 0.7, proj.y - baseSize * 1.35, baseSize * 0.5, baseSize * 0.3);
+                        ctx.fillRect(proj.x + baseSize * 0.2, proj.y - baseSize * 1.35, baseSize * 0.5, baseSize * 0.3);
+                        ctx.shadowBlur = 0;
+                        // 车门
+                        ctx.fillStyle = '#E74C3C';
+                        ctx.shadowColor = '#E74C3C';
+                        ctx.shadowBlur = 5 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x - baseSize * 0.4, proj.y - baseSize * 0.85, baseSize * 0.15, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        // 线路指示灯
+                        ctx.fillStyle = '#2ECC71';
+                        ctx.shadowColor = '#2ECC71';
+                        ctx.shadowBlur = 5 * proj.scale;
+                        ctx.fillRect(proj.x + baseSize * 0.35, proj.y - baseSize * 1.0, baseSize * 0.35, baseSize * 0.18);
+                        ctx.shadowBlur = 0;
+                        // 底部装饰条
+                        ctx.fillStyle = '#F1C40F';
+                        ctx.fillRect(proj.x - baseSize * 0.95, proj.y - baseSize * 0.08, baseSize * 1.9, baseSize * 0.08);
+                        break;
+
+                    case 'train_engine':
+                        // 地铁车头 - 精美设计
+                        var teGrad = ctx.createLinearGradient(0, proj.y - baseSize * 2.2, 0, proj.y);
+                        teGrad.addColorStop(0, '#0d1318');
+                        teGrad.addColorStop(0.3, '#1a252f');
+                        teGrad.addColorStop(0.5, '#2c3e50');
+                        teGrad.addColorStop(0.7, '#1a252f');
+                        teGrad.addColorStop(1, '#0d1318');
+                        ctx.fillStyle = teGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 1.0, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 1.0, proj.y - baseSize * 2.0);
+                        ctx.lineTo(proj.x - baseSize * 0.6, proj.y - baseSize * 2.2);
+                        ctx.lineTo(proj.x + baseSize * 0.9, proj.y - baseSize * 2.2);
+                        ctx.lineTo(proj.x + baseSize * 1.0, proj.y - baseSize * 1.5);
+                        ctx.lineTo(proj.x + baseSize * 1.0, proj.y);
+                        ctx.closePath();
+                        ctx.fill();
+                        // 高光
+                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.8, proj.y - baseSize * 2.0);
+                        ctx.lineTo(proj.x - baseSize * 0.6, proj.y - baseSize * 2.2);
+                        ctx.lineTo(proj.x + baseSize * 0.3, proj.y - baseSize * 2.2);
+                        ctx.lineTo(proj.x + baseSize * 0.2, proj.y - baseSize * 1.8);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#0d1318';
+                        ctx.lineWidth = 3 * proj.scale;
+                        ctx.stroke();
+                        // 车头灯
+                        ctx.fillStyle = '#F1C40F';
+                        ctx.shadowColor = '#F1C40F';
+                        ctx.shadowBlur = 15 * proj.scale;
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - baseSize * 2.1, baseSize * 0.22, baseSize * 0.14, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        // 挡风玻璃
+                        ctx.fillStyle = '#85C1E9';
+                        ctx.shadowColor = '#85C1E9';
+                        ctx.shadowBlur = 8 * proj.scale;
+                        ctx.fillRect(proj.x - baseSize * 0.4, proj.y - baseSize * 1.9, baseSize * 0.9, baseSize * 0.5);
+                        ctx.shadowBlur = 0;
+                        // 尾灯
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.shadowColor = '#e74c3c';
+                        ctx.shadowBlur = 8 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x + baseSize * 0.8, proj.y - baseSize * 1.2, baseSize * 0.12, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'neon_tower':
+                        // 霓虹灯塔 - 发光灯柱
+                        var ntGrad = ctx.createLinearGradient(proj.x - baseSize * 0.4, proj.y, proj.x + baseSize * 0.4, proj.y);
+                        ntGrad.addColorStop(0, '#1a1a2e');
+                        ntGrad.addColorStop(0.3, '#2d2d44');
+                        ntGrad.addColorStop(0.5, '#3d3d5c');
+                        ntGrad.addColorStop(0.7, '#2d2d44');
+                        ntGrad.addColorStop(1, '#1a1a2e');
+                        ctx.fillStyle = ntGrad;
+                        ctx.fillRect(proj.x - baseSize * 0.4, proj.y - baseSize * 2.5, baseSize * 0.8, baseSize * 2.5);
+                        // 霓虹光环
+                        var colors = ['#FF00FF', '#00FFFF', '#FFFF00', '#FF6B6B'];
+                        var colorIdx = Math.floor(game.frameCount / 30) % colors.length;
+                        ctx.strokeStyle = colors[colorIdx];
+                        ctx.shadowColor = colors[colorIdx];
+                        ctx.shadowBlur = 20 * proj.scale;
+                        ctx.lineWidth = 3 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x, proj.y - baseSize * 1.8, baseSize * 0.35, 0, Math.PI * 2);
+                        ctx.stroke();
+                        // 垂直霓虹灯管
+                        ctx.strokeStyle = colors[(colorIdx + 1) % colors.length];
+                        ctx.shadowColor = colors[(colorIdx + 1) % colors.length];
+                        ctx.lineWidth = 4 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.2, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.2, proj.y - baseSize * 2.3);
+                        ctx.stroke();
+                        ctx.strokeStyle = colors[(colorIdx + 2) % colors.length];
+                        ctx.shadowColor = colors[(colorIdx + 2) % colors.length];
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x + baseSize * 0.2, proj.y);
+                        ctx.lineTo(proj.x + baseSize * 0.2, proj.y - baseSize * 2.3);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'water_puddle':
+                        // 水坑 - 反射效果
+                        var wpGrad = ctx.createRadialGradient(proj.x, proj.y - 5, 0, proj.x, proj.y - 5, baseSize * 0.7);
+                        wpGrad.addColorStop(0, 'rgba(100, 180, 255, 0.6)');
+                        wpGrad.addColorStop(0.5, 'rgba(50, 130, 200, 0.4)');
+                        wpGrad.addColorStop(1, 'rgba(20, 80, 150, 0.2)');
+                        ctx.fillStyle = wpGrad;
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - 5, baseSize * 0.7, baseSize * 0.25, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 反射高光
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x - baseSize * 0.2, proj.y - baseSize * 0.1, baseSize * 0.25, baseSize * 0.08, -0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                        // 波纹效果
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                        ctx.lineWidth = 1 * proj.scale;
+                        var ripple = Math.sin(game.frameCount * 0.1) * 0.1 + 1;
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - 5, baseSize * 0.5 * ripple, baseSize * 0.18 * ripple, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+
+                    case 'warning_sign':
+                        // 警示牌 - 闪烁灯光
+                        // 支架
+                        ctx.fillStyle = '#5d6d7e';
+                        ctx.fillRect(proj.x - baseSize * 0.08, proj.y - baseSize * 1.6, baseSize * 0.16, baseSize * 1.6);
+                        // 牌体
+                        var wsGrad = ctx.createLinearGradient(0, proj.y - baseSize * 1.6, 0, proj.y - baseSize * 0.5);
+                        wsGrad.addColorStop(0, '#e74c3c');
+                        wsGrad.addColorStop(1, '#c0392b');
+                        ctx.fillStyle = wsGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y - baseSize * 1.6);
+                        ctx.lineTo(proj.x - baseSize * 0.45, proj.y - baseSize * 0.5);
+                        ctx.lineTo(proj.x + baseSize * 0.45, proj.y - baseSize * 0.5);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.strokeStyle = '#922b21';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.stroke();
+                        // 感叹号
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = `bold ${baseSize * 0.6}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('!', proj.x, proj.y - baseSize * 0.85);
+                        // 闪烁灯
+                        var blinkOn = Math.floor(game.frameCount / 15) % 2 === 0;
+                        if (blinkOn) {
+                            ctx.fillStyle = '#FFFF00';
+                            ctx.shadowColor = '#FFFF00';
+                            ctx.shadowBlur = 15 * proj.scale;
+                            ctx.beginPath();
+                            ctx.arc(proj.x, proj.y - baseSize * 1.3, baseSize * 0.12, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+                        break;
+
+                    case 'fire_barrel':
+                        // 燃烧桶 - 火焰效果
+                        var fbGrad = ctx.createLinearGradient(proj.x - baseSize * 0.35, proj.y, proj.x + baseSize * 0.35, proj.y);
+                        fbGrad.addColorStop(0, '#4a4a4a');
+                        fbGrad.addColorStop(0.3, '#6a6a6a');
+                        fbGrad.addColorStop(0.5, '#8a8a8a');
+                        fbGrad.addColorStop(0.7, '#6a6a6a');
+                        fbGrad.addColorStop(1, '#4a4a4a');
+                        ctx.fillStyle = fbGrad;
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y, baseSize * 0.35, baseSize * 0.15, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillRect(proj.x - baseSize * 0.35, proj.y - baseSize * 1.2, baseSize * 0.7, baseSize * 1.2);
+                        ctx.beginPath();
+                        ctx.ellipse(proj.x, proj.y - baseSize * 1.2, baseSize * 0.35, baseSize * 0.12, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#2c3e50';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.strokeRect(proj.x - baseSize * 0.35, proj.y - baseSize * 1.2, baseSize * 0.7, baseSize * 1.2);
+                        // 火焰
+                        var flicker = Math.sin(game.frameCount * 0.3) * 5;
+                        var flameGrad = ctx.createRadialGradient(proj.x, proj.y - baseSize * 1.5, 0, proj.x, proj.y - baseSize * 1.5, baseSize * 0.5);
+                        flameGrad.addColorStop(0, 'rgba(255, 255, 100, 0.9)');
+                        flameGrad.addColorStop(0.4, 'rgba(255, 150, 0, 0.7)');
+                        flameGrad.addColorStop(0.7, 'rgba(255, 50, 0, 0.4)');
+                        flameGrad.addColorStop(1, 'rgba(100, 0, 0, 0)');
+                        ctx.fillStyle = flameGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y - baseSize * 1.2 - flicker);
+                        ctx.bezierCurveTo(proj.x - baseSize * 0.3, proj.y - baseSize * 1.6, proj.x - baseSize * 0.4, proj.y - baseSize * 1.8, proj.x, proj.y - baseSize * 2.0 - flicker);
+                        ctx.bezierCurveTo(proj.x + baseSize * 0.4, proj.y - baseSize * 1.8, proj.x + baseSize * 0.3, proj.y - baseSize * 1.6, proj.x, proj.y - baseSize * 1.2 - flicker);
+                        ctx.fill();
+                        ctx.shadowColor = '#FF6600';
+                        ctx.shadowBlur = 20 * proj.scale;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'laser_gate':
+                        // 激光门 - 危险光线
+                        // 两侧支柱
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fillRect(proj.x - baseSize * 0.85, proj.y - baseSize * 2, baseSize * 0.2, baseSize * 2);
+                        ctx.fillRect(proj.x + baseSize * 0.65, proj.y - baseSize * 2, baseSize * 0.2, baseSize * 2);
+                        // 支柱灯
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.shadowColor = '#e74c3c';
+                        ctx.shadowBlur = 10 * proj.scale;
+                        ctx.beginPath();
+                        ctx.arc(proj.x - baseSize * 0.75, proj.y - baseSize * 1.8, baseSize * 0.1, 0, Math.PI * 2);
+                        ctx.arc(proj.x + baseSize * 0.75, proj.y - baseSize * 1.8, baseSize * 0.1, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        // 激光线
+                        var laserPulse = Math.sin(game.frameCount * 0.2) * 0.2 + 0.8;
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${laserPulse})`;
+                        ctx.shadowColor = '#FF0000';
+                        ctx.shadowBlur = 15 * proj.scale;
+                        ctx.lineWidth = 4 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.75, proj.y - baseSize * 1.5);
+                        ctx.lineTo(proj.x + baseSize * 0.75, proj.y - baseSize * 1.5);
+                        ctx.stroke();
+                        // 第二条激光
+                        ctx.strokeStyle = `rgba(255, 100, 100, ${laserPulse * 0.6})`;
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.75, proj.y - baseSize * 1.2);
+                        ctx.lineTo(proj.x + baseSize * 0.75, proj.y - baseSize * 1.2);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                        break;
+
+                    case 'crystal':
+                        // 水晶簇 - 紫色发光水晶
+                        var crystalColors = ['#9b59b6', '#8e44ad', '#7d3c98', '#6c3483'];
+                        // 主水晶
+                        var cgGrad = ctx.createLinearGradient(proj.x - baseSize * 0.3, proj.y, proj.x + baseSize * 0.3, proj.y - baseSize * 1.5);
+                        cgGrad.addColorStop(0, '#4a235a');
+                        cgGrad.addColorStop(0.3, '#7d3c98');
+                        cgGrad.addColorStop(0.5, '#9b59b6');
+                        cgGrad.addColorStop(0.7, '#a569bd');
+                        cgGrad.addColorStop(1, '#d7bde2');
+                        ctx.fillStyle = cgGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x, proj.y - baseSize * 1.5);
+                        ctx.lineTo(proj.x + baseSize * 0.25, proj.y - baseSize * 0.5);
+                        ctx.lineTo(proj.x + baseSize * 0.3, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.3, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.25, proj.y - baseSize * 0.5);
+                        ctx.closePath();
+                        ctx.fill();
+                        // 发光效果
+                        ctx.shadowColor = '#9b59b6';
+                        ctx.shadowBlur = 15 * proj.scale;
+                        ctx.strokeStyle = '#d7bde2';
+                        ctx.lineWidth = 2 * proj.scale;
+                        ctx.stroke();
+                        // 小水晶
+                        ctx.fillStyle = '#8e44ad';
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.25, proj.y - baseSize * 0.8);
+                        ctx.lineTo(proj.x - baseSize * 0.1, proj.y - baseSize * 0.4);
+                        ctx.lineTo(proj.x - baseSize * 0.3, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.4, proj.y);
+                        ctx.lineTo(proj.x - baseSize * 0.35, proj.y - baseSize * 0.5);
+                        ctx.closePath();
+                        ctx.fill();
+                        // 高光
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.beginPath();
+                        ctx.moveTo(proj.x - baseSize * 0.1, proj.y - baseSize * 1.2);
+                        ctx.lineTo(proj.x + baseSize * 0.05, proj.y - baseSize * 0.6);
+                        ctx.lineTo(proj.x - baseSize * 0.15, proj.y - baseSize * 0.8);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        break;
+                }
+
+                // 实体阴影 - 精美渐变
+                var shadowGrad = ctx.createRadialGradient(proj.x, proj.y + 3 * proj.scale, 0, proj.x, proj.y + 3 * proj.scale, baseSize * 0.8);
+                shadowGrad.addColorStop(0, 'rgba(0,0,0,0.6)');
+                shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.3)');
+                shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = shadowGrad;
+                ctx.beginPath();
+                ctx.ellipse(proj.x, proj.y + 3 * proj.scale, baseSize * 0.8, baseSize * 0.22, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 可跳跃障碍物：显示红色向上箭头提示 - 精美效果
+                if (type.canJumpOver) {
+                    var arrowX = proj.x;
+                    var arrowBaseY = proj.y - baseSize * type.height - baseSize * 0.3;
+                    var arrowLen = baseSize * 0.55;
+                    var arrowHeadW = baseSize * 0.28;
+                    var arrowHeadH = baseSize * 0.28;
+                    var shaftW = baseSize * 0.10;
+                    var bounce = Math.sin(game.frameCount * 0.15 + obs.z * 0.01) * 4 * proj.scale;
+                    var tipY = arrowBaseY - arrowLen + bounce;
+                    var arrowBase = arrowBaseY + bounce;
+
+                    ctx.save();
+                    // 箭头发光
+                    ctx.shadowColor = '#ff2222';
+                    ctx.shadowBlur = 10 * proj.scale;
+                    ctx.fillStyle = '#ff2222';
+                    ctx.strokeStyle = '#880000';
+                    ctx.lineWidth = 1.5 * proj.scale;
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX, tipY);
+                    ctx.lineTo(arrowX - arrowHeadW / 2, tipY + arrowHeadH);
+                    ctx.lineTo(arrowX - shaftW / 2, tipY + arrowHeadH);
+                    ctx.lineTo(arrowX - shaftW / 2, arrowBase);
+                    ctx.lineTo(arrowX + shaftW / 2, arrowBase);
+                    ctx.lineTo(arrowX + shaftW / 2, tipY + arrowHeadH);
+                    ctx.lineTo(arrowX + arrowHeadW / 2, tipY + arrowHeadH);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+                }
+            });
+        }
+
+
+        function drawCoins() {
+            game.coins.forEach(coin => {
+                if (coin.z < 0 || coin.z > CONFIG.trackLength) return;
+
+                const proj = project(coin.z, 0, coin.lane);
+                const size = 18 * proj.scale;
+                const bobOffset = Math.sin(game.frameCount * 0.2 + coin.id * 3) * 6 * proj.scale;
+                const cx = proj.x;
+                const cy = proj.y - 22 * proj.scale + bobOffset;
+
+                // 旋转效果（通过椭圆模拟）
+                const spinAngle = game.frameCount * 0.12 + coin.id * 2;
+                const squeezeX = Math.abs(Math.cos(spinAngle)); // 0~1 压缩比例
+                const coinW = size * (0.3 + squeezeX * 0.7);   // 旋转时宽度变化
+                const coinH = size;                             // 高度不变
+
+                // 星光拖尾效果
+                const trailAngle = game.frameCount * 0.08 + coin.id * 5;
+                for (let i = 3; i >= 1; i--) {
+                    const trailX = cx - i * 4 * proj.scale * Math.cos(trailAngle);
+                    const trailY = cy - i * 3 * proj.scale * Math.sin(trailAngle);
+                    const trailAlpha = 0.15 * (4 - i) / 3;
+                    ctx.fillStyle = `rgba(255, 215, 0, ${trailAlpha})`;
+                    ctx.beginPath();
+                    ctx.ellipse(trailX, trailY, coinW * 0.3, coinH * 0.3, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 外发光光晕
+                const glowGrad = ctx.createRadialGradient(cx, cy, coinW * 0.5, cx, cy, coinW * 2);
+                glowGrad.addColorStop(0, 'rgba(255, 215, 0, 0.4)');
+                glowGrad.addColorStop(0.5, 'rgba(255, 180, 0, 0.2)');
+                glowGrad.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                ctx.fillStyle = glowGrad;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, coinW * 2, coinH * 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 外发光
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 15 * proj.scale;
+
+                // 金币主体渐变 - 更精美
+                const grad = ctx.createLinearGradient(cx - coinW, cy - coinH, cx + coinW, cy + coinH);
+                grad.addColorStop(0, '#FFF8DC');
+                grad.addColorStop(0.2, '#FFD700');
+                grad.addColorStop(0.4, '#FFEC8B');
+                grad.addColorStop(0.6, '#FFD700');
+                grad.addColorStop(0.8, '#DAA520');
+                grad.addColorStop(1, '#B8860B');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, coinW, coinH, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 金币边缘 - 双层
+                ctx.strokeStyle = '#8B6914';
+                ctx.lineWidth = 2 * proj.scale;
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 1 * proj.scale;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy - coinH * 0.1, coinW * 0.95, coinH * 0.95, 0, Math.PI * 1.2, Math.PI * 1.8);
+                ctx.stroke();
+
+                // 币面 $ 符号（仅当硬币正面朝前时显示）
+                if (squeezeX > 0.5) {
+                    // 符号阴影
+                    ctx.fillStyle = '#8B6914';
+                    ctx.font = `bold ${size * 1.1}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('$', cx + 1, cy + 1);
+                    // 符号本体
+                    ctx.fillStyle = '#FFE066';
+                    ctx.fillText('$', cx, cy);
+                }
+
+                // 高光条纹 - 更闪亮
+                ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                ctx.lineWidth = 2 * proj.scale;
+                ctx.beginPath();
+                ctx.arc(cx, cy, coinW * 0.55, -Math.PI * 0.5, Math.PI * 0.5);
+                ctx.stroke();
+
+                // 顶部高光点
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath();
+                ctx.arc(cx - coinW * 0.3, cy - coinH * 0.5, coinW * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 边缘亮环
+                ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+                ctx.lineWidth = 1.5 * proj.scale;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, coinW * 1.15, coinH * 1.15, 0, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // 旋转星光粒子
+                for (let i = 0; i < 2; i++) {
+                    const starAngle = game.frameCount * 0.15 + i * Math.PI + coin.id * 3;
+                    const starX = cx + Math.cos(starAngle) * coinW * 1.3;
+                    const starY = cy + Math.sin(starAngle) * coinH * 1.3;
+                    ctx.fillStyle = 'rgba(255, 255, 200, 0.8)';
+                    ctx.beginPath();
+                    ctx.arc(starX, starY, 2 * proj.scale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+            });
+        }
+
+        function drawPowerups() {
+            game.powerups.forEach(pu => {
+                if (pu.z < 0 || pu.z > CONFIG.trackLength) return;
+                
+                const proj = project(pu.z, 0, pu.lane);
+                const size = 18 * proj.scale; // 与金币同样大小
+                const pulseSize = size + Math.sin(game.frameCount * 0.3) * 4 * proj.scale;
+                const bobOffset = Math.sin(game.frameCount * 0.2 + pu.id * 3) * 6 * proj.scale;
+                const cx = proj.x;
+                const cy = proj.y - 22 * proj.scale + bobOffset;
+                
+                const isInvincible = pu.type === 'invincible';
+                const mainColor = isInvincible ? '#00FF00' : '#FF6699';
+                const glowColor = isInvincible ? '#00FF00' : '#FF6699';
+                const lightColor = isInvincible ? '#90FF90' : '#FFB6D9';
+                const darkColor = isInvincible ? '#008800' : '#CC3366';
+                const starColor = isInvincible ? 'rgba(200, 255, 200, 0.8)' : 'rgba(255, 200, 220, 0.8)';
+                
+                // 发光效果
+                ctx.shadowColor = glowColor;
+                ctx.shadowBlur = 30 * proj.scale;
+                
+                // 外圈光环
+                ctx.strokeStyle = isInvincible ? 'rgba(0, 255, 0, 0.4)' : 'rgba(255, 102, 153, 0.4)';
+                ctx.lineWidth = 2 * proj.scale;
+                ctx.beginPath();
+                ctx.arc(cx, cy - size * 0.8, pulseSize * 1.5, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 能量球外圈
+                ctx.strokeStyle = mainColor;
+                ctx.lineWidth = 3 * proj.scale;
+                ctx.beginPath();
+                ctx.arc(cx, cy, pulseSize * 1.1, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // 能量球主体（与金币同样大小）
+                const gradient = ctx.createRadialGradient(
+                    cx - size * 0.3, cy - size * 0.3, 0,
+                    cx, cy, size
+                );
+                gradient.addColorStop(0, lightColor);
+                gradient.addColorStop(0.5, mainColor);
+                gradient.addColorStop(1, darkColor);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(cx, cy, size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 内部高光
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.beginPath();
+                ctx.arc(cx - size * 0.3, cy - size * 0.3, size * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 顶部高光点
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.beginPath();
+                ctx.arc(cx, cy - size * 0.5, size * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 中心图标
+                if (isInvincible) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = `bold ${14 * proj.scale}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('⚡', cx, cy);
+                } else {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = `bold ${12 * proj.scale}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🧲', cx, cy);
+                }
+                
+                // 旋转星光粒子
+                for (let i = 0; i < 2; i++) {
+                    const starAngle = game.frameCount * 0.15 + i * Math.PI + pu.id * 3;
+                    const starX = cx + Math.cos(starAngle) * size * 1.4;
+                    const starY = cy + Math.sin(starAngle) * size * 1.4;
+                    ctx.fillStyle = starColor;
+                    ctx.beginPath();
+                    ctx.arc(starX, starY, 2 * proj.scale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.shadowBlur = 0;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'alphabetic';
+            });
+        }
+
+        function drawParticles() {
+            game.particles = game.particles.filter(p => {
+                p.life -= 0.02;
+                if (p.life <= 0) return false;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                
+                ctx.fillStyle = `rgba(${p.color}, ${p.life})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+                
+                return true;
+            });
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                game.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8 - 3,
+                    size: Math.random() * 8 + 4,
+                    life: 1,
+                    color: color
+                });
+            }
+        }
+
+        // ==================== 游戏逻辑 ====================
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+            
+            // 随机决定是否生成多障碍物组合
+            const spawnMultiple = Math.random() > 0.75 && game.speed > 8;
+            const lanes = [lane];
+            
+            if (spawnMultiple) {
+                const secondLane = (lane + (Math.random() > 0.5 ? 1 : 2)) % 3;
+                lanes.push(secondLane);
+            }
+            
+            lanes.forEach(l => {
+                game.obstacles.push({
+                    z: CONFIG.trackLength,
+                    lane: l,
+                    type: type,
+                    rotation: Math.random() * Math.PI * 2
+                });
+            });
+        }
+
+        function spawnCoin() {
+            const lane = Math.floor(Math.random() * 3);
+            // 有时生成一排金币
+            const count = Math.random() > 0.7 ? 3 : 1;
+            
+            for (let i = 0; i < count; i++) {
+                game.coins.push({
+                    z: CONFIG.trackLength + i * 80,
+                    lane: lane,
+                    id: Math.random()
+                });
+            }
+        }
+
+        function spawnPowerup() {
+            const lane = Math.floor(Math.random() * 3);
+            // 随机生成无敌球或磁铁道具，从更远处生成
+            const type = Math.random() > 0.5 ? 'invincible' : 'magnet';
+            game.powerups.push({
+                z: CONFIG.trackLength + Math.random() * 500,
+                lane: lane,
+                type: type
+            });
+        }
+
+        function checkCollisions() {
+            const playerX = width / 2 + (game.playerLane - 1) * CONFIG.laneWidth;
+            const playerY = height * CONFIG.playerY;
+            const playerLaneRounded = Math.round(game.playerLane);
+            
+            // 检查障碍物碰撞
+            if (!game.isInvincible && !game.isDying) {
+                for (let obs of game.obstacles) {
+                    // 使用 Math.abs 检查玩家是否在该车道（允许0.5的误差范围）
+                    const laneMatch = Math.abs(game.playerLane - obs.lane) < 0.6;
+                    if (obs.z < 150 && obs.z > 30 && laneMatch) {
+                        takeDamage(obs.type ? obs.type.damage : 1);
+                        obs.z = -200; // 移除碰撞的障碍物
+                        break;
+                    }
+                }
+            }
+            
+            // 检查金币收集
+            game.coins = game.coins.filter(coin => {
+                // 吸金币效果：磁铁激活时，金币会飞向玩家
+                if (game.isMagnetActive && coin.z < 400 && coin.z > 0) {
+                    // 金币向玩家移动
+                    coin.magnetized = true;
+                    const magnetSpeed = 15;
+                    coin.z -= magnetSpeed;
+                    // 车道向玩家车道靠近
+                    if (coin.lane < game.playerLane) coin.lane += 0.08;
+                    if (coin.lane > game.playerLane) coin.lane -= 0.08;
+                }
+                
+                if (coin.z < 80 && coin.z > 20 && Math.abs(game.playerLane - coin.lane) < 0.6) {
+                    game.score += 10;
+                    updateScore();
+                    const proj = project(coin.z, 0, coin.lane);
+                    spawnParticles(proj.x, proj.y - 30, '255, 215, 0', 8);
+
+                    // 每获得2000积分，速度提升一档
+                    const newLevel = Math.floor(game.score / 2000);
+                    if (newLevel > game.speedLevel && game.speed < CONFIG.maxSpeed) {
+                        game.speedLevel = newLevel;
+                        game.speed = Math.min(CONFIG.initialSpeed + game.speedLevel * 0.8, CONFIG.maxSpeed);
+                        game.speedBoostFlash = 60; // 触发闪烁提示
+                        spawnSpeedBoostParticles(proj.x, proj.y - 50);
+                    }
+                    return false;
+                }
+                return coin.z > 0;
+            });
+            
+            // 道具收集（无敌球或磁铁球）
+            game.powerups = game.powerups.filter(pu => {
+                if (pu.z < 80 && pu.z > 20 && Math.abs(game.playerLane - pu.lane) < 0.6) {
+                    game.score += 50;
+                    updateScore();
+                    const proj = project(pu.z, 0, pu.lane);
+                    
+                    if (pu.type === 'invincible') {
+                        // 无敌球：激活无敌
+                        game.isInvincible = true;
+                        game.powerupEndTime = Date.now() + CONFIG.powerupDuration;
+                        document.getElementById('powerupIndicator').classList.remove('hidden');
+                        document.getElementById('powerupIndicator').textContent = '⚡ 无敌时间 ⚡';
+                        spawnParticles(proj.x, proj.y - 30, '255, 215, 0', 15);
+                    } else if (pu.type === 'magnet') {
+                        // 磁铁球：激活吸金币
+                        game.isMagnetActive = true;
+                        game.magnetEndTime = Date.now() + CONFIG.magnetDuration;
+                        document.getElementById('magnetIndicator').classList.remove('hidden');
+                        spawnParticles(proj.x, proj.y - 30, '255, 100, 100', 15);
+                    }
+                    return false;
+                }
+                return pu.z > 0;
+            });
+        }
+
+        function takeDamage(damage) {
+            game.lives -= damage;
+            
+            // 触发受伤效果
+            game.isHurt = true;
+            game.hurtEndTime = Date.now() + CONFIG.invincibilityDuration;
+            game.isInvincible = true;
+            
+            // 屏幕震动
+            canvas.classList.add('screen-shake');
+            setTimeout(() => canvas.classList.remove('screen-shake'), 300);
+            
+            // 伤害闪烁
+            canvas.classList.add('damage-flash');
+            setTimeout(() => canvas.classList.remove('damage-flash'), 500);
+            
+            // 死亡粒子
+            const playerX = width / 2;
+            const playerY = height * CONFIG.playerY;
+            spawnDeathParticles(playerX, playerY);
+            
+            // 更新生命显示
+            updateLivesDisplay();
+            
+            // 检查是否死亡
+            if (game.lives <= 0) {
+                gameOver();
+            } else {
+                // 受伤后短暂无敌
+                setTimeout(() => {
+                    if (game.lives > 0) {
+                        game.isInvincible = false;
+                        game.isHurt = false;
+                    }
+                }, CONFIG.invincibilityDuration);
+            }
+        }
+
+        function spawnSpeedBoostParticles(x, y) {
+            for (let i = 0; i < 20; i++) {
+                const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.8;
+                const speed = 4 + Math.random() * 6;
+                game.deathParticles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 6 + Math.random() * 10,
+                    life: 1.2,
+                    color: ['#00ffff', '#00ff88', '#88ff00'][Math.floor(Math.random() * 3)]
+                });
+            }
+        }
+
+        function spawnDeathParticles(x, y) {
+            for (let i = 0; i < 30; i++) {
+                const angle = (Math.PI * 2 / 30) * i;
+                const speed = 3 + Math.random() * 5;
+                game.deathParticles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 5 + Math.random() * 10,
+                    life: 1,
+                    color: Math.random() > 0.5 ? '#ff4444' : '#ff8800'
+                });
+            }
+        }
+
+        function drawDeathParticles() {
+            game.deathParticles = game.deathParticles.filter(p => {
+                p.life -= 0.03;
+                if (p.life <= 0) return false;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.vx *= 0.98;
+                
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                return true;
+            });
+        }
+
+        function updateLivesDisplay() {
+            let hearts = '';
+            for (let i = 0; i < CONFIG.maxLives; i++) {
+                if (i < game.lives) {
+                    hearts += '❤️';
+                } else {
+                    hearts += '🖤';
+                }
+            }
+            document.getElementById('livesDisplay').textContent = hearts;
+        }
+
+        function update() {
+            if (game.state !== 'playing') return;
+            
+            game.frameCount++;
+            
+            // 更新速度（不再自动递增，改由金币收集触发）
+            // 速度等级衰减：每2000金币升0.5档，上限maxSpeed
+            
+            // 平滑移动玩家
+            const targetX = (game.targetLane - 1) * CONFIG.laneWidth;
+            const currentX = (game.playerLane - 1) * CONFIG.laneWidth;
+            game.playerLane += (game.targetLane - game.playerLane) * 0.15;
+            
+            // 更新跳跃状态
+            if (game.isJumping) {
+                game.jumpFrame++;
+                // 跳跃轨迹：先上升后下降
+                const progress = game.jumpFrame / CONFIG.jumpDuration;
+                if (progress < 0.5) {
+                    // 上升阶段
+                    game.jumpHeight = CONFIG.jumpHeight * (progress * 2);
+                } else {
+                    // 下降阶段
+                    game.jumpHeight = CONFIG.jumpHeight * ((1 - progress) * 2);
+                }
+                if (game.jumpFrame >= CONFIG.jumpDuration) {
+                    game.isJumping = false;
+                    game.jumpFrame = 0;
+                    game.jumpHeight = 0;
+                }
+            }
+            
+            // 更新无敌状态（能量道具）
+            if (game.isInvincible && !game.isHurt && !game.isPermInvincible && Date.now() > game.powerupEndTime) {
+                game.isInvincible = false;
+                document.getElementById('powerupIndicator').classList.add('hidden');
+            }
+            // 永久无敌状态也保持无敌效果
+            if (game.isPermInvincible) {
+                game.isInvincible = true;
+                document.getElementById('powerupIndicator').classList.remove('hidden');
+                document.getElementById('powerupIndicator').textContent = '🛡️ 永久无敌 🛡️';
+            }
+            
+            // 更新磁铁状态
+            if (game.isMagnetActive && Date.now() > game.magnetEndTime) {
+                game.isMagnetActive = false;
+                document.getElementById('magnetIndicator').classList.add('hidden');
+            }
+            
+            // 更新受伤闪烁
+            if (game.isHurt && Date.now() > game.hurtEndTime) {
+                game.isHurt = false;
+            }
+            
+            // 移动物体（速度加快）
+            const moveSpeed = game.speed * 1.8;
+            game.obstacles.forEach(obs => obs.z -= moveSpeed);
+            game.coins.forEach(coin => coin.z -= moveSpeed);
+            game.powerups.forEach(pu => pu.z -= moveSpeed);
+            
+            // 清理超出范围的物体
+            game.obstacles = game.obstacles.filter(obs => obs.z > -100);
+            game.coins = game.coins.filter(coin => coin.z > -100);
+            game.powerups = game.powerups.filter(pu => pu.z > -100);
+            
+            // 生成新物体
+            if (game.frameCount - game.lastObstacleSpawn > game.nextObstacleSpawn) {
+                spawnObstacle();
+                game.lastObstacleSpawn = game.frameCount;
+                game.nextObstacleSpawn = CONFIG.obstacleSpawnInterval[0] + 
+                    Math.random() * (CONFIG.obstacleSpawnInterval[1] - CONFIG.obstacleSpawnInterval[0]);
+            }
+            
+            if (game.frameCount - game.lastCoinSpawn > game.nextCoinSpawn) {
+                spawnCoin();
+                game.lastCoinSpawn = game.frameCount;
+                game.nextCoinSpawn = CONFIG.coinSpawnInterval[0] + 
+                    Math.random() * (CONFIG.coinSpawnInterval[1] - CONFIG.coinSpawnInterval[0]);
+            }
+            
+            // 能量道具已禁用，改为按钮触发永久无敌
+            
+            // 检查碰撞
+            checkCollisions();
+            
+            // 生成跑步尘土粒子
+            if (game.frameCount % 3 === 0) {
+                const dustCount = Math.floor(game.speed / 3);
+                for (let i = 0; i < dustCount; i++) {
+                    game.dustParticles.push({
+                        x: width / 2 + (Math.random() - 0.5) * 30,
+                        y: height * CONFIG.playerY + 10,
+                        vx: -game.speed * 0.5 + (Math.random() - 0.5) * 2,
+                        vy: -Math.random() * 2 - 1,
+                        size: 3 + Math.random() * 4,
+                        life: 1,
+                        color: Math.random() > 0.5 ? 'rgba(180, 160, 140, 0.6)' : 'rgba(150, 130, 110, 0.5)'
+                    });
+                }
+            }
+            
+            // 更新尘土粒子
+            game.dustParticles = game.dustParticles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.05;
+                p.life -= 0.04;
+                p.size *= 0.98;
+                return p.life > 0 && p.size > 0.5;
+            });
+            
+            // 增加时间分数
+            if (game.frameCount % 60 === 0) {
+                game.score += 1;
+                updateScore();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // 绘制背景渐变
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+            bgGradient.addColorStop(0, '#0d0500');
+            bgGradient.addColorStop(0.4, '#1a0a00');
+            bgGradient.addColorStop(1, '#2d1810');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // 绘制天空装饰
+            drawSky();
+            
+            // 绘制跑道
+            drawTrack();
+            
+            // 绘制物体（按距离从远到近排序后绘制）
+            const allObjects = [
+                ...game.obstacles.map(o => ({...o, drawType: 'obstacle'})),
+                ...game.coins.map(c => ({...c, drawType: 'coin'})),
+                ...game.powerups.map(p => ({...p, drawType: 'powerup'}))
+            ].sort((a, b) => b.z - a.z);
+            
+            // 只调用一次绘制函数
+            drawObstacles();
+            drawCoins();
+            drawPowerups();
+            
+            // 绘制玩家
+            drawPlayer();
+            
+            // 绘制尘土粒子效果
+            game.dustParticles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            // 绘制粒子
+            drawParticles();
+            
+            // 绘制死亡粒子
+            drawDeathParticles();
+            
+            // 绘制速度指示
+            drawSpeedIndicator();
+            
+            // 绘制受伤遮罩
+            if (game.isHurt) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            // 速度提升闪烁效果
+            if (game.speedBoostFlash > 0) {
+                const flashAlpha = game.speedBoostFlash / 60 * 0.35;
+                ctx.fillStyle = `rgba(0, 255, 136, ${flashAlpha})`;
+                ctx.fillRect(0, 0, width, height);
+
+                // 显示 "SPEED UP!" 文字
+                const textAlpha = Math.min(1, game.speedBoostFlash / 20);
+                const textY = height * 0.35;
+                ctx.save();
+                ctx.globalAlpha = textAlpha;
+                ctx.fillStyle = '#00ff88';
+                ctx.strokeStyle = '#004422';
+                ctx.lineWidth = 4;
+                ctx.font = `bold ${48}px 'Arial Black', Arial`;
+                ctx.textAlign = 'center';
+                ctx.strokeText('⚡ SPEED UP! ⚡', width / 2, textY);
+                ctx.fillText('⚡ SPEED UP! ⚡', width / 2, textY);
+                ctx.restore();
+
+                game.speedBoostFlash--;
+            }
+        }
+
+        function drawSky() {
+            // 城市天空渐变（黄昏/夜间城市）- 精美版
+            const horizonY = height * CONFIG.horizonY;
+            
+            // 多层天空渐变
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY + 80);
+            skyGrad.addColorStop(0, '#050510');      // 深夜黑蓝
+            skyGrad.addColorStop(0.2, '#0a0a20');    // 深空蓝
+            skyGrad.addColorStop(0.4, '#151535');    // 深蓝紫
+            skyGrad.addColorStop(0.6, '#1a1a40');    // 暗蓝紫
+            skyGrad.addColorStop(0.8, '#2d1b4e');    // 暗紫
+            skyGrad.addColorStop(0.9, '#4a2040');    // 暗红紫
+            skyGrad.addColorStop(1, '#5a3050');      // 地平线
+
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, horizonY + 80);
+
+            // 星星 - 多层星群
+            const starSeed = 12345;
+            for (let i = 0; i < 80; i++) {
+                const sx = ((i * 7919 + starSeed) % width);
+                const sy = ((i * 6271 + starSeed * 2) % (horizonY * 0.9));
+                const brightness = 0.3 + Math.sin(game.frameCount * 0.05 + i * 0.5) * 0.3 + 0.4;
+                const size = 0.5 + ((i * 13) % 10) * 0.1;
+                ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                ctx.beginPath();
+                ctx.arc(sx, sy, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 流星效果
+            if (Math.random() < 0.01 && game.state === 'playing') {
+                game.meteorParticles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * horizonY * 0.5,
+                    vx: 8 + Math.random() * 4,
+                    vy: 3 + Math.random() * 2,
+                    life: 1,
+                    length: 30 + Math.random() * 20
+                });
+            }
+            
+            // 绘制流星
+            game.meteorParticles = game.meteorParticles.filter(m => {
+                m.x += m.vx;
+                m.y += m.vy;
+                m.life -= 0.03;
+                if (m.life <= 0) return false;
+                
+                const meteorGrad = ctx.createLinearGradient(m.x, m.y, m.x - m.length, m.y + m.length * 0.4);
+                meteorGrad.addColorStop(0, `rgba(255, 255, 255, ${m.life})`);
+                meteorGrad.addColorStop(0.3, `rgba(200, 220, 255, ${m.life * 0.6})`);
+                meteorGrad.addColorStop(1, 'rgba(100, 150, 255, 0)');
+                
+                ctx.strokeStyle = meteorGrad;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(m.x, m.y);
+                ctx.lineTo(m.x - m.length, m.y + m.length * 0.4);
+                ctx.stroke();
+                
+                // 流星头部
+                ctx.fillStyle = `rgba(255, 255, 255, ${m.life})`;
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                return true;
+            });
+
+            // 云层效果 - 渐变云朵
+            ctx.globalAlpha = 0.15;
+            for (let i = 0; i < 5; i++) {
+                const cloudX = ((game.frameCount * 0.2 + i * 300) % (width + 200)) - 100;
+                const cloudY = horizonY * (0.15 + i * 0.08);
+                const cloudW = 120 + i * 30;
+                const cloudH = 25 + i * 5;
+                
+                const cloudGrad = ctx.createRadialGradient(cloudX, cloudY, 0, cloudX, cloudY, cloudW);
+                cloudGrad.addColorStop(0, 'rgba(100, 80, 120, 0.8)');
+                cloudGrad.addColorStop(0.5, 'rgba(60, 50, 80, 0.5)');
+                cloudGrad.addColorStop(1, 'rgba(40, 30, 60, 0)');
+                
+                ctx.fillStyle = cloudGrad;
+                ctx.beginPath();
+                ctx.ellipse(cloudX, cloudY, cloudW, cloudH, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // 城市剪影（高楼轮廓）- 精美渐变
+            const buildingGrad = ctx.createLinearGradient(0, horizonY - height * 0.4, 0, horizonY);
+            buildingGrad.addColorStop(0, '#0a0a12');
+            buildingGrad.addColorStop(0.5, '#0f0f1a');
+            buildingGrad.addColorStop(1, '#151520');
+            ctx.fillStyle = buildingGrad;
+            
+            const buildings = [
+                { x: 0.02, w: 0.06, h: 0.25 },
+                { x: 0.07, w: 0.04, h: 0.18 },
+                { x: 0.10, w: 0.05, h: 0.30 },
+                { x: 0.14, w: 0.03, h: 0.20 },
+                { x: 0.16, w: 0.07, h: 0.28 },
+                { x: 0.22, w: 0.04, h: 0.22 },
+                { x: 0.25, w: 0.06, h: 0.35 },
+                { x: 0.30, w: 0.03, h: 0.17 },
+                { x: 0.32, w: 0.05, h: 0.25 },
+                { x: 0.36, w: 0.04, h: 0.20 },
+                { x: 0.39, w: 0.06, h: 0.32 },
+                { x: 0.44, w: 0.03, h: 0.18 },
+                { x: 0.46, w: 0.05, h: 0.28 },
+                { x: 0.50, w: 0.04, h: 0.22 },
+                { x: 0.53, w: 0.07, h: 0.38 },
+                { x: 0.59, w: 0.03, h: 0.15 },
+                { x: 0.61, w: 0.05, h: 0.26 },
+                { x: 0.65, w: 0.04, h: 0.20 },
+                { x: 0.68, w: 0.06, h: 0.30 },
+                { x: 0.73, w: 0.03, h: 0.18 },
+                { x: 0.75, w: 0.05, h: 0.25 },
+                { x: 0.79, w: 0.04, h: 0.22 },
+                { x: 0.82, w: 0.06, h: 0.35 },
+                { x: 0.87, w: 0.04, h: 0.20 },
+                { x: 0.90, w: 0.06, h: 0.28 },
+            ];
+
+            for (const b of buildings) {
+                const bx = b.x * width;
+                const bw = b.w * width;
+                const bh = b.h * horizonY;
+                ctx.fillRect(bx, horizonY - bh, bw, bh);
+                
+                // 建筑顶部装饰灯
+                if (b.h > 0.25) {
+                    ctx.fillStyle = `rgba(255, 0, 0, ${0.5 + Math.sin(game.frameCount * 0.05 + b.x * 10) * 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(bx + bw / 2, horizonY - bh, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 窗户灯光（随机亮灯）- 精美多层效果
+            for (const b of buildings) {
+                const bx = b.x * width;
+                const bw = b.w * width;
+                const bh = b.h * horizonY;
+                const cols = Math.floor(bw / 8);
+                const rows = Math.floor(bh / 10);
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const seed = (r * cols + c + b.x * 1000) % 17;
+                        if (seed < 6) {
+                            const wx = bx + c * 8 + 2;
+                            const wy = horizonY - bh + r * 10 + 3;
+                            if (wy < horizonY - 5) {
+                                const flicker = Math.sin(game.frameCount * 0.1 + seed * 3) > 0.3 ? 0.9 : 0.3;
+                                // 窗户发光效果
+                                const windowColors = ['#FFE66D', '#FFA500', '#87CEEB', '#98FB98'];
+                                const windowColor = windowColors[seed % windowColors.length];
+                                ctx.fillStyle = windowColor;
+                                ctx.globalAlpha = flicker * 0.8;
+                                ctx.fillRect(wx, wy, 4, 5);
+                                // 窗户光晕
+                                ctx.globalAlpha = flicker * 0.2;
+                                ctx.fillRect(wx - 1, wy - 1, 6, 7);
+                            }
+                        }
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            // 远处霓虹灯广告牌 - 精美发光效果
+            // 红色广告牌
+            ctx.shadowColor = '#E74C3C';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#E74C3C';
+            ctx.fillRect(width * 0.15, horizonY - height * 0.12, width * 0.12, height * 0.06);
+            // 广告牌边框
+            ctx.strokeStyle = '#FF6B6B';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(width * 0.15, horizonY - height * 0.12, width * 0.12, height * 0.06);
+            ctx.shadowBlur = 0;
+            
+            // 蓝色广告牌
+            ctx.shadowColor = '#3498DB';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#3498DB';
+            ctx.fillRect(width * 0.6, horizonY - height * 0.09, width * 0.08, height * 0.05);
+            ctx.strokeStyle = '#5DADE2';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(width * 0.6, horizonY - height * 0.09, width * 0.08, height * 0.05);
+            ctx.shadowBlur = 0;
+
+            // 地平线光晕
+            const horizonGlow = ctx.createLinearGradient(0, horizonY - 30, 0, horizonY + 30);
+            horizonGlow.addColorStop(0, 'rgba(100, 50, 80, 0)');
+            horizonGlow.addColorStop(0.5, 'rgba(150, 80, 100, 0.3)');
+            horizonGlow.addColorStop(1, 'rgba(80, 40, 60, 0)');
+            ctx.fillStyle = horizonGlow;
+            ctx.fillRect(0, horizonY - 30, width, 60);
+        }
+
+        function drawSpeedIndicator() {
+            const speedPercent = (game.speed - CONFIG.initialSpeed) / (CONFIG.maxSpeed - CONFIG.initialSpeed);
+
+            // 速度等级标签（每次2000金币触发）
+            if (game.speedLevel > 0) {
+                ctx.fillStyle = '#00ff88';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`LV.${game.speedLevel}`, 20, height - 46);
+            }
+
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(20, height - 40, 100, 15);
+
+            const speedGradient = ctx.createLinearGradient(20, 0, 120, 0);
+            speedGradient.addColorStop(0, '#00ff00');
+            speedGradient.addColorStop(0.5, '#ffff00');
+            speedGradient.addColorStop(1, '#ff0000');
+
+            ctx.fillStyle = speedGradient;
+            ctx.fillRect(20, height - 40, 100 * speedPercent, 15);
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(20, height - 40, 100, 15);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Arial';
+            ctx.fillText('速度', 20, height - 45);
+
+            // 下次加速还需获得的积分
+            const nextLevelScore = (game.speedLevel + 1) * 2000;
+            const scoreToNext = nextLevelScore - game.score;
+            if (scoreToNext > 0 && game.speed < CONFIG.maxSpeed) {
+                ctx.fillStyle = 'rgba(255,215,0,0.8)';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(`再得 ${scoreToNext} 积分加速`, 125, height - 46);
+            }
+        }
+
+        function gameOver() {
+            game.state = 'gameover';
+            
+            // 壮观的死亡效果
+            const playerX = width / 2;
+            const playerY = height * CONFIG.playerY;
+            
+            // 大量爆炸粒子
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 8;
+                game.deathParticles.push({
+                    x: playerX,
+                    y: playerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 3,
+                    size: 8 + Math.random() * 15,
+                    life: 1.5,
+                    color: ['#ff4444', '#ff8800', '#ffff00', '#ff0000'][Math.floor(Math.random() * 4)]
+                });
+            }
+            
+            // 屏幕强烈震动
+            canvas.classList.add('screen-shake');
+            setTimeout(() => canvas.classList.remove('screen-shake'), 500);
+            
+            // 红色闪烁
+            canvas.classList.add('damage-flash');
+            setTimeout(() => canvas.classList.remove('damage-flash'), 500);
+            
+            // 延迟显示结束界面
+            setTimeout(() => {
+                // 检查新纪录
+                const isNewRecord = game.score > game.highScore;
+                if (isNewRecord) {
+                    game.highScore = game.score;
+                    localStorage.setItem('templeRunnerHighScore', game.highScore);
+                }
+                
+                // 显示结束界面
+                document.getElementById('finalScore').textContent = game.score;
+                document.getElementById('newRecord').classList.toggle('hidden', !isNewRecord);
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }, 800);
+        }
+
+        function updateScore() {
+            document.getElementById('scoreDisplay').textContent = game.score;
+            document.getElementById('highScoreDisplay').textContent = game.highScore;
+        }
+
+        function startGame() {
+            game.state = 'playing';
+            game.score = 0;
+            game.speed = CONFIG.initialSpeed;
+            game.playerLane = 1;
+            game.targetLane = 1;
+            game.obstacles = [];
+            game.coins = [];
+            game.powerups = [];
+            game.particles = [];
+            game.deathParticles = [];
+            game.lastObstacleSpawn = 0;
+            game.lastCoinSpawn = 0;
+            game.lastPowerupSpawn = 0;
+            game.frameCount = 0;
+            game.isInvincible = false;
+            game.isMagnetActive = false;
+            game.speedLevel = 0;
+            game.speedBoostFlash = 0;
+            game.isHurt = false;
+            game.lives = CONFIG.maxLives;
+            game.isDying = false;
+            game.isJumping = false;
+            game.jumpFrame = 0;
+            game.jumpHeight = 0;
+            
+            updateScore();
+            updateLivesDisplay();
+            
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('powerupIndicator').classList.add('hidden');
+            document.getElementById('magnetIndicator').classList.add('hidden');
+            document.getElementById('invincibleBtn').classList.remove('active');
+            document.getElementById('invincibleBtn').textContent = '🛡️ 无敌模式';
+        }
+
+        function togglePause() {
+            if (game.state === 'playing') {
+                game.state = 'paused';
+                document.getElementById('pauseOverlay').classList.remove('hidden');
+            } else if (game.state === 'paused') {
+                game.state = 'playing';
+                document.getElementById('pauseOverlay').classList.add('hidden');
+            }
+        }
+
+        // ==================== 输入处理 ====================
+        // 点击任意位置开始游戏（备用方案）
+        document.addEventListener('click', () => {
+            if (game.state === 'start' || game.state === 'gameover') {
+                startGame();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (game.state === 'start' || game.state === 'gameover') {
+                    startGame();
+                    return;
+                }
+            }
+            
+            if (e.code === 'KeyP') {
+                if (game.state === 'playing' || game.state === 'paused') {
+                    togglePause();
+                }
+            }
+
+            // 无敌快捷键 U
+            if (e.code === 'KeyU') {
+                togglePermInvincible();
+            }
+            
+            if (game.state === 'playing') {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+                    e.preventDefault();
+                    if (game.targetLane > 0) {
+                        game.targetLane--;
+                    }
+                }
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+                    e.preventDefault();
+                    if (game.targetLane < 2) {
+                        game.targetLane++;
+                    }
+                }
+            }
+        });
+
+        // ==================== 移动端触控 ====================
+        // 防止页面滚动（只在游戏进行时阻止）
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('touchstart', (e) => {
+            // 只在游戏进行中才阻止默认行为，开始/结束界面放行让 click 触发
+            const isUI = e.target.closest('.invincible-btn') || e.target.closest('.mobile-btn') || 
+                e.target.closest('#mobilePauseBtn');
+            const isStartScreen = e.target.closest('#startScreen') || e.target.closest('#gameOverScreen');
+            if (!isUI && !isStartScreen && game.state === 'playing') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 开始/结束界面直接绑定 touchstart 确保手机可用
+        document.getElementById('startScreen').addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (game.state === 'start') startGame();
+        }, { passive: true });
+        document.getElementById('gameOverScreen').addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (game.state === 'gameover') startGame();
+        }, { passive: true });
+
+        // 左键
+        const mobileLeft = document.getElementById('mobileLeft');
+        const mobileRight = document.getElementById('mobileRight');
+        const mobilePauseBtn = document.getElementById('mobilePauseBtn');
+
+        function handleMoveLeft() {
+            // 未开始时点击直接开始游戏
+            if (game.state === 'start' || game.state === 'gameover') {
+                startGame();
+                return;
+            }
+            if (game.state === 'playing' && game.targetLane > 0) {
+                game.targetLane--;
+            }
+        }
+        function handleMoveRight() {
+            // 未开始时点击直接开始游戏
+            if (game.state === 'start' || game.state === 'gameover') {
+                startGame();
+                return;
+            }
+            if (game.state === 'playing' && game.targetLane < 2) {
+                game.targetLane++;
+            }
+        }
+
+        // 通用：触控+鼠标双支持，按住持续触发
+        function bindControlBtn(btn, handler) {
+            let holdTimer = null;
+
+            // 触控 - 必须 preventDefault 防止误触发
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                btn.classList.add('pressed');
+                handler();
+                holdTimer = setInterval(handler, 280);
+            }, { passive: false });
+
+            const stopHold = () => {
+                btn.classList.remove('pressed');
+                clearInterval(holdTimer);
+            };
+            btn.addEventListener('touchend', stopHold, { passive: false });
+            btn.addEventListener('touchcancel', stopHold);
+
+            // 鼠标 fallback（模拟器 / PC 测试）
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                btn.classList.add('pressed');
+                handler();
+                holdTimer = setInterval(handler, 280);
+                const up = () => {
+                    stopHold();
+                    document.removeEventListener('mouseup', up);
+                };
+                document.addEventListener('mouseup', up);
+            });
+        }
+
+        bindControlBtn(mobileLeft, handleMoveLeft);
+        bindControlBtn(mobileRight, handleMoveRight);
+
+        // 暂停按钮（触控+鼠标）
+        mobilePauseBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (game.state === 'playing' || game.state === 'paused') togglePause();
+        }, { passive: false });
+        mobilePauseBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (game.state === 'playing' || game.state === 'paused') togglePause();
+        });
+
+        // 滑动手势控制（在canvas区域）——必须 passive:false 才能 preventDefault
+        let touchStartX = 0, touchStartY = 0, touchMoved = false;
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchMoved = false;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - touchStartX;
+            const dy = e.touches[0].clientY - touchStartY;
+            if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) && !touchMoved) {
+                touchMoved = true;
+                if (game.state === 'playing') {
+                    if (dx < 0) handleMoveLeft();
+                    else handleMoveRight();
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // 短按（无滑动）：开始/重启游戏，放宽到 50px 容忍手指抖动
+            if (dist < 50 && !touchMoved) {
+                if (game.state === 'start' || game.state === 'gameover') {
+                    startGame();
+                }
+            }
+        }, { passive: false });
+
+        // ==================== 游戏循环 ====================
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 初始化
+        updateScore();
+        updateLivesDisplay();
+        document.getElementById('highScoreDisplay').textContent = game.highScore;
+        gameLoop();
+
+        // ==================== 无敌切换函数 ====================
+        function togglePermInvincible() {
+            game.isPermInvincible = !game.isPermInvincible;
+            const btn = document.getElementById('invincibleBtn');
+            if (game.isPermInvincible) {
+                btn.classList.add('active');
+                btn.textContent = '⚡ 永久无敌 ⚡';
+                game.isInvincible = true;
+                document.getElementById('powerupIndicator').classList.remove('hidden');
+                document.getElementById('powerupIndicator').textContent = '🛡️ 永久无敌 🛡️';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '🛡️ 无敌模式';
+                if (!game.isHurt) {
+                    game.isInvincible = false;
+                    document.getElementById('powerupIndicator').classList.add('hidden');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
